@@ -33,14 +33,15 @@ Servidor: [`../llama-menu.sh`](../llama-menu.sh) (llama-server), que aplica os p
 | `qwen27` | Qwen3.8-27B | UD-IQ3_S (3.4 bpw, 11.2 GiB) | 61440 | q8_0/q4_0 | 0.6 / 0.95 / 20 | MTP nativo, draft 2 | **6/6 (2x)** | **89.1** (56.5 sem MTP) |
 | `qwen35` | Qwen3.6-35B-A3B (MoE 3B ativos) | UD-IQ3_S MTP (14.3 GiB) | 32768 | q8_0/q4_0 | 0.6 / 0.95 / 20 | MTP draft 2, `--n-cpu-moe 16` | 4/6 | 142.2 |
 | `coder` | Qwen3-Coder-30B-A3B (MoE) | UD-Q3_K_XL (12.9 GiB) | 32768 | q8_0/q4_0 | 0.7 / 0.8 / 20, repeat 1.05 | `--n-cpu-moe 8` | 4/6 | 85.2 |
-| `qwen4` | Qwen3.5-4B | Q4_K_M (2.6 GiB) | 61440 | q8_0/q8_0 | 0.7 / 0.8 / 20 | mmproj disponível | 3/6 | — |
-| `qwen9` | Qwen3.5-9B | Q4_K_M MTP (5.5 GiB) | 61440 | q8_0/q8_0 | 0.7 / 0.8 / 20 | MTP draft 2 | 2/6 | **146.5** (123.4 sem MTP) |
+| `qwen4` | Qwen3.5-4B | Q4_K_M (2.6 GiB) | 61440 | q8_0/q8_0 | 0.7 / 0.8 / 20 | mmproj disponível | 3/6 | 175.6 |
+| `qwen9` | Qwen3.5-9B | **Q8_0 MTP (9.1 GiB)** | 61440 | q8_0/q4_0 | 0.7 / 0.8 / 20 | MTP draft 2 | **4/6** | 135.1 |
+| `qwen9-q4` | Qwen3.5-9B | Q4_K_M MTP (5.5 GiB) | 61440 | q8_0/q8_0 | 0.7 / 0.8 / 20 | MTP draft 2 | 2/6 | **146.5** (123.4 sem MTP) |
 | `oss` | gpt-oss-20b (MoE) | MXFP4 nativo (11.3 GiB) | 61440 | q8_0/q4_0 | 1.0 / 1.0 / off | reasoning medium (high não melhorou) | 1/6 | 166.2 |
-| `gemma12` | Gemma 4 12B IT | Q4_0 QAT (6.5 GiB) | 61440 | q8_0/q8_0 | 1.0 / 0.95 / 64 | mmproj (visão) | 0/6 | — |
+| `gemma12` | Gemma 4 12B IT | Q4_0 QAT (6.5 GiB) | 61440 | q8_0/q8_0 | 1.0 / 0.95 / 64 | mmproj (visão) | 0/6 | 88.2 |
 
 Aprendizado de quantização que os dados sustentam: quant dinâmico (UD) em 3 bits de modelo grande > quant estático em 3-4 bits de modelo menor (o 27B UD-IQ3_S gabaritou; o Devstral 24B Q3_K_L estático, testado antes do harness, era inutilizável). QAT (gemma) preserva bem o Q4_0, mas não salva instruction-following fraco.
 
-Placares por rodada em [resultados/](resultados/). Nota: os tok/s de `qwen4` e `gemma12` ficaram pendentes de medição.
+Placares por rodada em [resultados/](resultados/). 
 
 ## Lições (importam mais que o placar)
 
@@ -49,3 +50,4 @@ Placares por rodada em [resultados/](resultados/). Nota: os tok/s de `qwen4` e `
 3. **MTP é ganho grátis, mas exige tuning.** Com `--spec-draft-n-max 2`: +58% no 27B (aceitação 68%). Com 3: só +19% (aceitação 36%). Vale checar se o GGUF já embute as heads antes de baixar variante.
 4. **Reasoning ganha de velocidade em tarefa autônoma.** O 27B "lento" foi o único a gabaritar, duas vezes. Modelos rápidos que não se auto-verificam (gpt-oss) estagnam mesmo com harness bom.
 5. **Valide o validador.** Dois bugs de harness quase mudaram conclusões: porta ocupada gerando PASS falso e `((PASS++))` retornando erro com contador em zero.
+6. **Em modelo pequeno, a quantização pode ser O gargalo.** O 9B foi de 2/6 (Q4_K_M) para 4/6 (Q8_0) custando só -8% de velocidade. Nos grandes, o UD de 3 bits segurou 6/6. Regra prática: sobrou VRAM? Suba o quant do modelo pequeno antes de trocar de modelo. (Ressalva: rodada única; variância não descartada.)

@@ -19,7 +19,8 @@ COMANDOS=(
   "qwen4|Qwen3.5-4B-Q4_K_M.gguf|ultra-rápido"
   "oss|gpt-oss-20b-MXFP4.gguf|agêntico MoE, contexto folgado"
   "gemma12|gemma-4-12B-it-QAT-Q4_0.gguf|generalista"
-  "qwen9|Qwen3.5-9B-MTP-Q4_K_M.gguf|rápido (MTP speculative)"
+  "qwen9|Qwen3.5-9B-MTP-Q8_0.gguf|rápido e preciso (Q8 + MTP)"
+  "qwen9-q4|Qwen3.5-9B-MTP-Q4_K_M.gguf|9B leve (Q4, fallback)"
 )
 
 resolve_atalho() {  # $1 = atalho sem -vis; define MODEL ou retorna 1
