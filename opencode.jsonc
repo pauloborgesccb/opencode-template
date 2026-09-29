@@ -1,0 +1,53 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  // Modelo padrão no formato provider/model.
+  // Sem essa chave, herda o default global (~/.config/opencode/opencode.jsonc).
+  // "model": "anthropic/claude-sonnet-4-5",
+
+  // Shell usado pela ferramenta de comandos
+  // "shell": "/bin/bash",
+
+  // Regras de permissão (formato do schema oficial):
+  // valor simples ("allow" | "ask" | "deny") ou objeto padrão -> efeito.
+  // Ações: read | edit | glob | grep | list | bash | task | skill | lsp |
+  //        question | webfetch | websearch | external_directory
+  "permission": {
+    "read": "allow",
+    "grep": "allow",
+    "glob": "allow",
+
+    "edit": {
+      "*": "allow",
+      ".env*": "deny",
+      "node_modules/*": "deny",
+      "*/migrations/*": "ask"
+    },
+
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "npm run test*": "allow",
+      "npm run lint*": "allow",
+      "git push*": "deny",
+      "rm -rf*": "deny"
+    },
+
+    "external_directory": "ask"
+  }
+
+  // Formatação automática apos edits
+  // "formatter": { ... }
+
+  // Servidores MCP. Prefira adicionar via `opencode mcp add`.
+  // "mcp": {
+  //   "context7": { "url": "https://mcp.context7.com/mcp" },
+  //   "everything": { "disabled": true }
+  // }
+
+  // Plugins: pacotes publicados ou diretorios locais.
+  // Arquivos em .opencode/plugins/ ja sao carregados automaticamente.
+  // "plugin": []
+}

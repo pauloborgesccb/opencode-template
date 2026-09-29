@@ -1,0 +1,94 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 8192
+  },
+  "permission": {
+    "read": "allow",
+    "grep": "allow",
+    "glob": "allow",
+
+    "edit": {
+      "*": "allow",
+      ".env*": "deny",
+      "node_modules/*": "deny",
+      "*/migrations/*": "ask"
+    },
+
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "npm run test*": "allow",
+      "npm run lint*": "allow",
+      "git push*": "deny",
+      "rm -rf*": "deny"
+    },
+
+    "webfetch": "allow",
+    "external_directory": "ask"
+  },
+  "media": {
+    "image": {
+      "auto_resize": true,
+      "max_width": 2000,
+      "max_height": 2000,
+      "max_base64_bytes": 5242880
+    }
+  },
+  "provider": {
+    "llamacpp": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "llama-local",
+      "options": {
+        "baseURL": "http://127.0.0.1:8080/v1",
+        "apiKey": "local"
+      },
+      "models": {
+        "qwen3.8-27b-ud-iq3_s": {
+          "id": "qwen3.8-27b-ud-iq3_s",
+          "name": "Qwen 3.8 27B IQ3_S (llama)",
+          "reasoning": true,
+          "tools": true,
+          "limit": { "context": 61440, "output": 16384 }
+        },
+        "qwen3-coder-30b-a3b": {
+          "id": "qwen3-coder-30b-a3b",
+          "name": "Qwen3 Coder 30B A3B (llama)",
+          "tools": true,
+          "limit": { "context": 61440, "output": 16384 }
+        },
+        "gpt-oss-20b": {
+          "id": "gpt-oss-20b",
+          "name": "GPT OSS 20B (llama)",
+          "reasoning": true,
+          "tools": true,
+          "limit": { "context": 61440, "output": 16384 }
+        },
+        "gemma-4-12b-it-qat-q4_0": {
+          "id": "gemma-4-12b-it-qat-q4_0",
+          "name": "Gemma 4 12B QAT (llama)",
+          "tools": true,
+          "limit": { "context": 61440, "output": 8192 }
+        },
+        "qwen3.5-9b-q4_k_m": {
+          "id": "qwen3.5-9b-q4_k_m",
+          "name": "Qwen 3.5 9B (llama)",
+          "tools": true,
+          "limit": { "context": 61440, "output": 8192 }
+        },
+        "gemma-4-e4b-it-q4_k_m": {
+          "id": "gemma-4-e4b-it-q4_k_m",
+          "name": "Gemma 4 E4B (llama)",
+          "tools": true,
+          "limit": { "context": 61440, "output": 8192 }
+        }
+      }
+    }
+  },
+  "model": "llamacpp/qwen3.8-27b-ud-iq3_s",
+  "small_model": "llamacpp/qwen3.5-9b-q4_k_m"
+}
