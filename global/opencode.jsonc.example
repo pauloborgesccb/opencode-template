@@ -92,12 +92,6 @@
           "name": "Qwen 3.5 9B MTP (llama)",
           "tools": true,
           "limit": { "context": 61440, "output": 8192 }
-        },
-        "gemma-4-e4b-it-q4_k_m": {
-          "id": "gemma-4-e4b-it-q4_k_m",
-          "name": "Gemma 4 E4B (llama)",
-          "tools": true,
-          "limit": { "context": 61440, "output": 8192 }
         }
       }
     }

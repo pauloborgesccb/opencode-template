@@ -1,0 +1,21 @@
+  1) backend sobe + seed                               FAIL
+  2) frontend builda                                   FAIL
+  3-5) pulados (backend fora do ar)                    FAIL
+  6) typecheck backend sem erro                        FAIL
+
+PLACAR AUTOMÁTICO: 0/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+modelo: coder
+tempo_total_s: 756
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 19963
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 14.5354
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 14208
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 249.96

@@ -1,0 +1,43 @@
+ 44714  1) backend sobe + seed                               PASS
+  2) frontend builda                                   FAIL
+  3) amount<=0 retorna 400 (obteve 400)                PASS
+  4) categoria inexistente retorna 404 (obteve 201)    FAIL
+  5) summary correto e ordenado                        FAIL
+  6) typecheck backend sem erro                        PASS
+ 44803
+PLACAR AUTOMÁTICO: 3/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./backend
+./backend/dev.sqlite
+./backend/package.json
+./backend/src
+./backend/tsconfig.json
+./backend/package-lock.json
+./AGENTS.md
+./frontend
+./frontend/package.json
+./frontend/src
+./frontend/tsconfig.json
+./frontend/package-lock.json
+./frontend/tailwind.config.js
+./frontend/next.config.js
+./frontend/next-env.d.ts
+modelo: qwen4
+tempo_total_s: 1800
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 168462
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 30.7243
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 62040
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 436.476

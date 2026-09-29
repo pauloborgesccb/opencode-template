@@ -1,0 +1,81 @@
+  1) backend sobe + seed                               FAIL
+  2) frontend builda                                   FAIL
+  3-5) pulados (backend fora do ar)                    FAIL
+  6) typecheck backend sem erro                        PASS
+  6) typecheck backend sem erro                        FAIL
+
+PLACAR AUTOMÁTICO: 1/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- backend (últimas 15 linhas) ---
+[[90m23:49:20[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 223473  - [39m28/09/2026, 23:49:20 [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 223473  - [39m28/09/2026, 23:49:20 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +12ms[39m
+[32m[Nest] 223473  - [39m28/09/2026, 23:49:20 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmCoreModule dependencies initialized[39m[38;5;3m +14ms[39m
+[32m[Nest] 223473  - [39m28/09/2026, 23:49:20 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 223473  - [39m28/09/2026, 23:49:20 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +0ms[39m
+/home/pauloborges/bench/run-coder/backend/src/main.ts:10
+    origin: ['http://localhost:4000'],
+          ^
+
+TypeError: cors is not a function
+    at bootstrap (/home/pauloborges/bench/run-coder/backend/src/main.ts:10:11)
+
+Node.js v22.23.1
+--- frontend build (últimas 10 linhas) ---
+  [90m  |[0m          [31m[1m^^^^^^^^[0m
+  [90m2 |[0m
+  [90m3 |[0m [36mexport[0m [36mdefault[0m [36mfunction[0m [33mExpenseTracker[0m() {
+  [90m4 |[0m   [36mconst[0m [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+
+Ecmascript file had an error
+
+
+    at <unknown> (./src/app/page.tsx:1:20)
+    at <unknown> (./src/app/page.tsx:1:10)
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./dev.sqlite
+./backend
+./backend/dev.sqlite
+./backend/package.json
+./backend/tsconfig.tsbuildinfo
+./backend/src
+./backend/tsconfig.json
+./backend/package-lock.json
+./backend/seed.js
+./AGENTS.md
+./test-api.sh
+./frontend
+./frontend/eslint.config.mjs
+./frontend/README.md
+./frontend/next.config.ts
+./frontend/package.json
+./frontend/src
+./frontend/CLAUDE.md
+./frontend/tsconfig.json
+./frontend/.gitignore
+./frontend/package-lock.json
+./frontend/postcss.config.mjs
+./frontend/public
+./frontend/AGENTS.md
+./frontend/next-env.d.ts
+./frontend/.git
+./test-endpoints.sh
+modelo: coder
+tempo_total_s: 2706
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 191129
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 84.3542
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 33425
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 592.142

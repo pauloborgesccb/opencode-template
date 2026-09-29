@@ -1,0 +1,23 @@
+  1) backend sobe + seed                               PASS
+  2) frontend builda                                   PASS
+  3) amount<=0 retorna 400 (obteve 400)                PASS
+  4) categoria inexistente retorna 404 (obteve 404)    PASS
+  5) summary correto e ordenado                        PASS
+  6) typecheck backend sem erro                        PASS
+
+PLACAR AUTOMÁTICO: 6/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+modelo: qwen27
+tempo_total_s: 1153
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 75161
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 44.914
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 43536
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 1023.51

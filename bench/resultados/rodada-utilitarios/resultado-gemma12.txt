@@ -1,0 +1,33 @@
+  1) backend sobe + seed                               FAIL
+  2) frontend builda                                   FAIL
+  3-5) pulados (backend fora do ar)                    FAIL
+  6) typecheck backend sem erro                        FAIL
+
+PLACAR AUTOMÁTICO: 0/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- backend (últimas 15 linhas) ---
+--- frontend build (últimas 10 linhas) ---
+/home/pauloborges/bench/validate.sh: linha 26: cd: frontend: Arquivo ou diretório inexistente
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./expense-tracker
+./expense-tracker/backend
+./expense-tracker/frontend
+./AGENTS.md
+modelo: gemma12
+tempo_total_s: 906
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 107710
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 34.9584
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 53789
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 694.378

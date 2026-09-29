@@ -1,0 +1,57 @@
+  1) backend sobe + seed                               FAIL
+  2) frontend builda                                   PASS
+  3-5) pulados (backend fora do ar)                    FAIL
+  6) typecheck backend sem erro                        PASS
+ 51542
+PLACAR AUTOMÁTICO: 2/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- backend (últimas 15 linhas) ---
+
+> backend@1.0.0 start:dev
+> nest start --watch
+
+[2J[3J[H[[90m16:41:04[0m] Starting compilation in watch mode...
+
+[[90m16:41:05[0m] Found 0 errors. Watching for file changes.
+
+[32m[Nest] 51542  - [39m29/09/2026, 16:41:06 [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 51542  - [39m29/09/2026, 16:41:06 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +11ms[39m
+[32m[Nest] 51542  - [39m29/09/2026, 16:41:06 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 51542  - [39m29/09/2026, 16:41:06 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmCoreModule dependencies initialized[39m[38;5;3m +31ms[39m
+[32m[Nest] 51542  - [39m29/09/2026, 16:41:06 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 51542  - [39m29/09/2026, 16:41:06 [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +4ms[39m
+Killed
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./backend
+./backend/dev.sqlite
+./backend/package.json
+./backend/nest-cli.json
+./backend/src
+./backend/scripts
+./backend/tsconfig.json
+./backend/package-lock.json
+./AGENTS.md
+./frontend
+./frontend/package.json
+./frontend/src
+./frontend/tsconfig.json
+./frontend/package-lock.json
+./frontend/next-env.d.ts
+modelo: coder
+tempo_total_s: 689
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 75781
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 37.6545
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 26462
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 486.716

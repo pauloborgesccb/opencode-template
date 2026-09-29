@@ -1,0 +1,31 @@
+  1) backend sobe + seed                               PASS
+  2) frontend builda                                   FAIL
+  3) amount<=0 retorna 400 (obteve 400)                PASS
+  4) categoria inexistente retorna 404 (obteve 404)    PASS
+  5) summary correto e ordenado                        PASS
+  6) typecheck backend sem erro                        FAIL
+
+PLACAR AUTOMÁTICO: 4/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- frontend build (últimas 10 linhas) ---
+/home/pauloborges/bench/validate.sh: linha 22: cd: frontend: Arquivo ou diretório inexistente
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./AGENTS.md
+modelo: oss
+tempo_total_s: 23
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 10382
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 0.933783
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 2965
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 20.6984

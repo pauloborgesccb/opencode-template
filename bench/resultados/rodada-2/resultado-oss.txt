@@ -1,0 +1,71 @@
+  1) backend sobe + seed                               FAIL
+  2) frontend builda                                   FAIL
+  3-5) pulados (backend fora do ar)                    FAIL
+  6) typecheck backend sem erro                        FAIL
+
+PLACAR AUTOMÁTICO: 0/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- backend (últimas 15 linhas) ---
+[7m2[0m import { Category } from '../categories/category.entity';
+[7m [0m [91m                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+[96msrc/entities/expense.entity.ts[0m:[93m18[0m:[93m53[0m - [91merror[0m[90m TS2339: [0mProperty 'expenses' does not exist on type 'unknown'.
+
+[7m18[0m   @ManyToOne(() => Category, (category) => category.expenses, { eager: true })
+[7m  [0m [91m                                                    ~~~~~~~~[0m
+
+[96msrc/expenses/expenses.service.ts[0m:[93m27[0m:[93m7[0m - [91merror[0m[90m TS2552: [0mCannot find name 'category'. Did you mean 'Category'?
+
+[7m27[0m       category,
+[7m  [0m [91m      ~~~~~~~~[0m
+
+[[90m23:52:18[0m] Found 5 errors. Watching for file changes.
+
+--- frontend build (últimas 10 linhas) ---
+
+./pages/index.tsx:2:24
+Type error: Cannot find module 'date-fns' or its corresponding type declarations.
+
+[0m [90m 1 | [39m[36mimport[39m { useEffect[33m,[39m useState } [36mfrom[39m [32m'react'[39m[33m;[39m[0m
+[0m[31m[1m>[22m[39m[90m 2 | [39m[36mimport[39m { format } [36mfrom[39m [32m'date-fns'[39m[33m;[39m[0m
+[0m [90m   | [39m                       [31m[1m^[22m[39m[0m
+[0m [90m 3 | [39m[0m
+[0m [90m 4 | [39m[36minterface[39m [33mExpense[39m {[0m
+[0m [90m 5 | [39m  id[33m:[39m number[33m;[39m[0m
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./backend
+./backend/seed.ts
+./backend/package.json
+./backend/src
+./backend/tsconfig.json
+./backend/package-lock.json
+./AGENTS.md
+./frontend
+./frontend/styles
+./frontend/package.json
+./frontend/tsconfig.json
+./frontend/package-lock.json
+./frontend/tailwind.config.js
+./frontend/pages
+./frontend/next-env.d.ts
+./frontend/postcss.config.js
+./ 
+./ /home
+modelo: oss
+tempo_total_s: 77
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 16540
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 2.23414
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 9277
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 68.1227

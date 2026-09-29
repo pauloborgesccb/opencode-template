@@ -73,6 +73,10 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 
 **`global/tools/pdf.ts`**: tools `pdf_text` (extrai texto de PDF digital) e `pdf_pages` (converte páginas em PNG para modelos com visão). Requer `poppler-utils`.
 
+## Benchmark de modelos locais
+
+A pasta [`bench/`](bench/) traz o harness completo para medir se um modelo local serve como agente (placar automático de 6 critérios), os resultados já obtidos e as lições do ciclo de melhoria. Ver [bench/README.md](bench/README.md).
+
 ## Referência opencode v2
 
 ### AGENTS.md

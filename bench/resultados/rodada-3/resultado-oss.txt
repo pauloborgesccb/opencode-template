@@ -1,0 +1,47 @@
+  1) backend sobe + seed                               FAIL
+  2) frontend builda                                   FAIL
+  3-5) pulados (backend fora do ar)                    FAIL
+  6) typecheck backend sem erro                        PASS
+
+PLACAR AUTOMÁTICO: 1/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- backend (últimas 15 linhas) ---
+
+> expense-backend@0.1.0 start:dev
+> ts-node-dev --respawn --transpileOnly src/main.ts
+
+ts-node-dev: no script to run provided
+Usage: ts-node-dev [options] script [arguments]
+
+--- frontend build (últimas 10 linhas) ---
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./backend
+./backend/backend
+./backend/package.json
+./backend/src
+./backend/tsconfig.json
+./backend/package-lock.json
+./AGENTS.md
+./frontend
+./frontend/app
+./frontend/package.json
+./frontend/tsconfig.json
+./frontend/next-env.d.ts
+modelo: oss
+tempo_total_s: 721
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 35413
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 6.22915
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 19678
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 155.419

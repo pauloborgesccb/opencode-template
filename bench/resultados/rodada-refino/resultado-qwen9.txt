@@ -1,0 +1,59 @@
+  1) backend sobe + seed                               FAIL
+  2) frontend builda                                   PASS
+  3-5) pulados (backend fora do ar)                    FAIL
+  6) typecheck backend sem erro                        PASS
+
+PLACAR AUTOMÁTICO: 2/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- backend (últimas 15 linhas) ---
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Module.require (node:internal/modules/cjs/loader:1527:12)
+    at require (node:internal/modules/helpers:147:16)
+[31m[Nest] 13321  - [39m29/09/2026, 13:46:08 [31m  ERROR[39m [38;5;3m[ExceptionHandler] [39mSyntaxError: Invalid or unexpected token
+[90m    at compileSourceTextModule (node:internal/modules/esm/utils:346:16)[39m
+[90m    at ModuleLoader.importSyncForRequire (node:internal/modules/esm/loader:438:18)[39m
+[90m    at loadESMFromCJS (node:internal/modules/cjs/loader:1600:24)[39m
+[90m    at Module._compile (node:internal/modules/cjs/loader:1763:5)[39m
+[90m    at Object..js (node:internal/modules/cjs/loader:1913:10)[39m
+[90m    at Module.load (node:internal/modules/cjs/loader:1505:32)[39m
+[90m    at Function._load (node:internal/modules/cjs/loader:1309:12)[39m
+[90m    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)[39m
+[90m    at Module.require (node:internal/modules/cjs/loader:1527:12)[39m
+[90m    at require (node:internal/modules/helpers:147:16)[39m
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./backend
+./backend/dev.sqlite
+./backend/package.json
+./backend/src
+./backend/tsconfig.json
+./backend/package-lock.json
+./backend/database
+./backend/.env
+./AGENTS.md
+./frontend
+./frontend/styles
+./frontend/app
+./frontend/package.json
+./frontend/tsconfig.json
+./frontend/package-lock.json
+./frontend/next.config.js
+./frontend/next-env.d.ts
+modelo: qwen9
+tempo_total_s: 1800
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 102592
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 21.8522
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 24339
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 218.241

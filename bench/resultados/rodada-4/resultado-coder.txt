@@ -1,0 +1,67 @@
+  1) backend sobe + seed                               PASS
+  2) frontend builda                                   FAIL
+  3) amount<=0 retorna 400 (obteve 400)                PASS
+  4) categoria inexistente retorna 404 (obteve 404)    PASS
+  5) summary correto e ordenado                        PASS
+  6) typecheck backend sem erro                        FAIL
+
+PLACAR AUTOMÁTICO: 4/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- frontend build (últimas 10 linhas) ---
+    at map (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:43:33) [/home/pauloborges/bench/run-coder/frontend/.next/build/chunks/[root-of-the-server]__1kki86f._.js:81:35]
+
+Import trace:
+  Client Component Browser:
+    ./src/app/globals.css [Client Component Browser]
+    ./src/app/layout.tsx [Server Component]
+
+
+    at require (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:49:25) [/home/pauloborges/bench/run-coder/frontend/.next/build/chunks/[root-of-the-server]__1kki86f._.js:86:33])
+    at map (turbopack:///[turbopack-node]/transforms/postcss.ts?config=[project]/postcss.config.mjs:43:33) [/home/pauloborges/bench/run-coder/frontend/.next/build/chunks/[root-of-the-server]__1kki86f._.js:81:35])
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./backend
+./backend/tsconfig.build.json
+./backend/README.md
+./backend/.prettierrc
+./backend/package.json
+./backend/nest-cli.json
+./backend/src
+./backend/tsconfig.json
+./backend/.gitignore
+./backend/package-lock.json
+./backend/vitest.config.ts
+./backend/.oxlintrc.json
+./backend/.git
+./backend/vitest.config.e2e.ts
+./AGENTS.md
+./frontend
+./frontend/eslint.config.mjs
+./frontend/README.md
+./frontend/tailwind.config.ts
+./frontend/next.config.ts
+./frontend/package.json
+./frontend/src
+./frontend/CLAUDE.md
+./frontend/tsconfig.json
+./frontend/.gitignore
+./frontend/package-lock.json
+./frontend/tailwind.config.js
+./frontend/postcss.config.mjs
+modelo: coder
+tempo_total_s: 497
+# HELP llamacpp:prompt_tokens_total Number of prompt tokens processed, excluding cached tokens
+# TYPE llamacpp:prompt_tokens_total counter
+llamacpp:prompt_tokens_total 79131
+# HELP llamacpp:prompt_seconds_total Total time spent processing prompts
+# TYPE llamacpp:prompt_seconds_total counter
+llamacpp:prompt_seconds_total 35.31
+# HELP llamacpp:tokens_predicted_total Number of generation tokens processed
+# TYPE llamacpp:tokens_predicted_total counter
+llamacpp:tokens_predicted_total 15325
+# HELP llamacpp:tokens_predicted_seconds_total Total time spent generating tokens
+# TYPE llamacpp:tokens_predicted_seconds_total counter
+llamacpp:tokens_predicted_seconds_total 262.028
