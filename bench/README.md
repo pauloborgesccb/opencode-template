@@ -4,7 +4,7 @@ Harness que mede, de forma automática e repetível, se um modelo local serve co
 
 ## Como rodar
 
-Requisitos: opencode, llama-server via `~/llama-menu.sh` (porta 8080), Node 20+ no PATH do script, portas 4000/4001 livres, `psmisc` (fuser).
+Requisitos: opencode, llama-server via [`../llama-menu.sh`](../llama-menu.sh) na porta 8080 (ajuste a variável BIN para o caminho do seu llama-server e MODELS_DIR para sua pasta de GGUFs), Node 20+ no PATH do script, portas 4000/4001 livres, `psmisc` (fuser).
 
 ```bash
 ./bench.sh <comando-llama-menu> <id-do-modelo-no-opencode>
@@ -26,17 +26,21 @@ Mais 1 critério manual (reatividade da UI). O validate.sh mata processos nas po
 
 ## Resultados obtidos (RTX 5080 16GB, set/2026)
 
-| Modelo | Melhor placar | tokens/s (geração de código) |
-|---|---|---|
-| Qwen3.8-27B UD-IQ3_S + MTP nativo | **6/6 (2x)** | 89.1 (56.5 sem MTP) |
-| Qwen3.6-35B-A3B MTP UD-IQ3_S | 4/6 | 142.2 |
-| Qwen3-Coder-30B-A3B UD-Q3_K_XL | 4/6 | 85.2 |
-| Qwen3.5-4B Q4_K_M | 3/6 | — |
-| Qwen3.5-9B MTP Q4_K_M | 2/6 | 146.5 |
-| gpt-oss-20b MXFP4 | 1/6 (nem com reasoning high melhora) | 166.2 |
-| Gemma 4 12B QAT | 0/6 (ignora estrutura pedida) | — |
+Servidor: [`../llama-menu.sh`](../llama-menu.sh) (llama-server), que aplica os parâmetros por modelo automaticamente. Comum a todos: flash-attn, offload total (`-ngl 999`), `--ubatch-size 1024`, `--jinja`. KV cache: K sempre q8_0; V q8_0 quando o GGUF < 8 GiB, senão q4_0. Contexto: 61440, reduzido a 32768 quando o GGUF >= 12 GiB.
 
-Placares por rodada em [resultados/](resultados/).
+| Alias | Modelo | Quantização | Ctx | KV (K/V) | Sampling (temp/top-p/top-k) | Extras | Placar | tok/s |
+|---|---|---|---|---|---|---|---|---|
+| `qwen27` | Qwen3.8-27B | UD-IQ3_S (3.4 bpw, 11.2 GiB) | 61440 | q8_0/q4_0 | 0.6 / 0.95 / 20 | MTP nativo, draft 2 | **6/6 (2x)** | **89.1** (56.5 sem MTP) |
+| `qwen35` | Qwen3.6-35B-A3B (MoE 3B ativos) | UD-IQ3_S MTP (14.3 GiB) | 32768 | q8_0/q4_0 | 0.6 / 0.95 / 20 | MTP draft 2, `--n-cpu-moe 16` | 4/6 | 142.2 |
+| `coder` | Qwen3-Coder-30B-A3B (MoE) | UD-Q3_K_XL (12.9 GiB) | 32768 | q8_0/q4_0 | 0.7 / 0.8 / 20, repeat 1.05 | `--n-cpu-moe 8` | 4/6 | 85.2 |
+| `qwen4` | Qwen3.5-4B | Q4_K_M (2.6 GiB) | 61440 | q8_0/q8_0 | 0.7 / 0.8 / 20 | mmproj disponível | 3/6 | — |
+| `qwen9` | Qwen3.5-9B | Q4_K_M MTP (5.5 GiB) | 61440 | q8_0/q8_0 | 0.7 / 0.8 / 20 | MTP draft 2 | 2/6 | **146.5** (123.4 sem MTP) |
+| `oss` | gpt-oss-20b (MoE) | MXFP4 nativo (11.3 GiB) | 61440 | q8_0/q4_0 | 1.0 / 1.0 / off | reasoning medium (high não melhorou) | 1/6 | 166.2 |
+| `gemma12` | Gemma 4 12B IT | Q4_0 QAT (6.5 GiB) | 61440 | q8_0/q8_0 | 1.0 / 0.95 / 64 | mmproj (visão) | 0/6 | — |
+
+Aprendizado de quantização que os dados sustentam: quant dinâmico (UD) em 3 bits de modelo grande > quant estático em 3-4 bits de modelo menor (o 27B UD-IQ3_S gabaritou; o Devstral 24B Q3_K_L estático, testado antes do harness, era inutilizável). QAT (gemma) preserva bem o Q4_0, mas não salva instruction-following fraco.
+
+Placares por rodada em [resultados/](resultados/). Nota: os tok/s de `qwen4` e `gemma12` ficaram pendentes de medição.
 
 ## Lições (importam mais que o placar)
 
