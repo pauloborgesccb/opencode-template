@@ -55,6 +55,19 @@
           "tools": true,
           "limit": { "context": 61440, "output": 16384 }
         },
+        "qwen3.6-35b-a3b-mtp": {
+          "id": "qwen3.6-35b-a3b-mtp",
+          "name": "Qwen3.6 35B A3B MTP (llama)",
+          "reasoning": true,
+          "tools": true,
+          "limit": { "context": 32768, "output": 16384 }
+        },
+        "qwen3.5-4b": {
+          "id": "qwen3.5-4b",
+          "name": "Qwen 3.5 4B (llama)",
+          "tools": true,
+          "limit": { "context": 61440, "output": 8192 }
+        },
         "qwen3-coder-30b-a3b": {
           "id": "qwen3-coder-30b-a3b",
           "name": "Qwen3 Coder 30B A3B (llama)",
@@ -74,9 +87,9 @@
           "tools": true,
           "limit": { "context": 61440, "output": 8192 }
         },
-        "qwen3.5-9b-q4_k_m": {
-          "id": "qwen3.5-9b-q4_k_m",
-          "name": "Qwen 3.5 9B (llama)",
+        "qwen3.5-9b-mtp": {
+          "id": "qwen3.5-9b-mtp",
+          "name": "Qwen 3.5 9B MTP (llama)",
           "tools": true,
           "limit": { "context": 61440, "output": 8192 }
         },
@@ -90,5 +103,5 @@
     }
   },
   "model": "llamacpp/qwen3.8-27b-ud-iq3_s",
-  "small_model": "llamacpp/qwen3.5-9b-q4_k_m"
+  "small_model": "llamacpp/qwen3.5-9b-mtp"
 }

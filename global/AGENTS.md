@@ -18,6 +18,9 @@
 - TypeORM/JPA: relação bidirecional exige o lado inverso declarado (ex: `category.expenses` só existe se `Category` declarar `@OneToMany`).
 - Validação de entrada devolve 400; recurso inexistente devolve 404; duplicidade devolve 409. Não misture.
 - NestJS: registre `app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }))` no main.ts, senão os DTOs não validam e tudo vira 500. Lance `BadRequestException`/`NotFoundException`/`ConflictException` explicitamente; erro genérico não tratado vira 500 e reprova.
+- Chave estrangeira: DTO não valida existência no banco. Antes de criar/atualizar registro com FK, busque a entidade referenciada e lance `NotFoundException` se não existir. Criar com FK inexistente devolvendo 201 é bug.
+- Endpoint de agregação/relatório: o contrato pedido (nomes de campos, ordenação, formato) é obrigatório. Depois de implementar, chame o endpoint e compare o JSON retornado campo a campo com o pedido.
+- Em tarefa fullstack, feche e valide o backend ANTES de começar o frontend; reserve tempo para o build do front passar.
 - Scripts npm referenciados (seed, start:dev) devem existir no package.json que VOCÊ escreveu.
 
 ## Fluxo com subagents (critério objetivo)
