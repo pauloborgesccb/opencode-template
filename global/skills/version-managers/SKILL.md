@@ -1,63 +1,82 @@
 ---
 name: Gerenciadores de versão (nvm, pyenv, sdkman)
-description: Como instalar, trocar e ativar versões de Node (nvm), Python (pyenv) e Java/Maven (sdkman) nesta máquina, inclusive em shell não interativo. Use SEMPRE que precisar rodar node, npm, python, java ou maven, ou quando um comando falhar por versão errada de runtime.
+description: Como descobrir, instalar, trocar e ativar versões de Node (nvm), Python (pyenv) e Java/Maven (sdkman) em Linux, macOS e Windows, inclusive em shell não interativo. Use SEMPRE que precisar rodar node, npm, python, java ou maven, ou quando um comando falhar por versão errada de runtime.
 ---
 
-# Gerenciadores de versão desta máquina
+# Gerenciadores de versão (multiplataforma)
 
-## AVISO CRÍTICO: Node default é v14
-
-O `node`/`npm` do PATH padrão é **v14.21.3** (antigo). Projeto moderno (Nest 11+, Next 15+, Vite) QUEBRA com ele. Sempre ative uma versão adequada antes de qualquer comando node/npm.
-
-## nvm (Node) - versões instaladas: 14, 16, 20, 22, 24
-
-nvm é função de shell: em sessão não interativa (agente) NÃO está carregado. Ative assim:
+## Passo 0: descubra o ambiente ANTES de rodar qualquer coisa
 
 ```bash
-source ~/.nvm/nvm.sh && nvm use 22
+uname -s 2>/dev/null || echo Windows   # Linux / Darwin / Windows
+node -v; python --version; java -version
 ```
 
-Ou sem nvm, direto no PATH (mais confiável em script):
+NUNCA assuma que o runtime do PATH é moderno: é comum o `node` default ser uma versão antiga (ex: v14) que quebra Nest 11+/Next 15+/Vite em silêncio ou com erro de sintaxe confuso. Verifique sempre; o projeto declara o que precisa em `.nvmrc`, `engines` do package.json, `.python-version`, `.sdkmanrc` ou pom.xml.
+
+## Node
+
+### Linux/macOS (nvm)
+nvm é função de shell: em sessão não interativa (agente) NÃO está carregado.
 
 ```bash
-export PATH="$HOME/.nvm/versions/node/v22.23.1/bin:$PATH"
+source ~/.nvm/nvm.sh && nvm use 22       # ativa na sessão
+ls ~/.nvm/versions/node/                 # ver instaladas
+nvm install 22                           # instalar
 ```
 
-- Projeto com `.nvmrc`: `nvm use` (sem argumento) respeita o arquivo.
-- Instalar nova: `nvm install 24`. Default moderno recomendado: 22 (LTS).
-
-## pyenv (Python) - global: 3.12.11
-
-Os shims já estão no PATH (`~/.pyenv/shims`), então `python` funciona direto e aponta para 3.12.11.
+Em scripts, prefira PATH direto (não depende de função de shell):
 
 ```bash
-pyenv versions              # listar
-pyenv local 3.12.11         # fixa a versão do projeto (cria .python-version)
-pyenv install 3.13          # instalar nova
+export PATH="$HOME/.nvm/versions/node/v22.23.1/bin:$PATH"   # ajuste à versão instalada
 ```
 
-- venv por projeto: `python -m venv .venv && source .venv/bin/activate`.
+### Windows (nvm-windows)
+Ferramenta diferente do nvm Unix: é executável, sem `source`.
 
-## sdkman (Java/Maven) - javas: 6, 7, 8, 11, 17, 21, 25
+```powershell
+nvm list                 # instaladas
+nvm use 22.23.1          # troca GLOBAL (afeta todo o sistema; pode pedir admin)
+nvm install 22.23.1
+```
 
-sdkman é função de shell: em sessão não interativa, carregue antes:
+Alternativas Windows sem nvm: `winget install OpenJS.NodeJS.LTS` ou usar o Node do projeto via `corepack`/volta se existir.
+
+## Python
+
+### Linux/macOS (pyenv)
+Shims costumam estar no PATH, então `python` já aponta para a versão do pyenv.
 
 ```bash
-source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk use java 21.0.9-zulu
+pyenv versions
+pyenv local 3.12         # fixa no projeto (cria .python-version)
+pyenv install 3.13
 ```
+
+### Windows (pyenv-win)
+Mesmos comandos (`pyenv versions/local/install`) mas é projeto separado; se não existir, use o Python Launcher nativo: `py -3.12 ...` ou `winget install Python.Python.3.12`.
+
+Em ambos: venv por projeto com `python -m venv .venv` e ative (`source .venv/bin/activate` no Unix, `.venv\Scripts\activate` no Windows).
+
+## Java/Maven
+
+### Linux/macOS (sdkman)
+Função de shell: carregue antes em sessão não interativa.
 
 ```bash
-sdk list java | grep installed   # ver instaladas
-sdk use java 11.0.30-zulu        # trocar na sessão
-sdk default java 21.0.9-zulu     # trocar o default
-sdk env                          # respeita .sdkmanrc do projeto
+source "$HOME/.sdkman/bin/sdkman-init.sh"
+sdk list java | grep installed
+sdk use java 21.0.9-zulu       # na sessão
+sdk default java 21.0.9-zulu   # default
+sdk env                        # respeita .sdkmanrc do projeto
 ```
 
-- Projeto lyra usa **Java 11** (11.0.30-zulu). Spring Boot 4+ exige **21+** (21.0.9-zulu instalada).
-- Maven também vem do sdkman (`sdk use maven ...`); prefira o wrapper `./mvnw` do projeto quando existir.
+### Windows
+sdkman NÃO roda em PowerShell/cmd nativos (só via Git Bash ou WSL). Alternativas nativas: `winget install EclipseAdoptium.Temurin.21.JDK` e ajustar `JAVA_HOME`, ou usar o JDK configurado na IDE. Para Maven, prefira SEMPRE o wrapper do projeto: `./mvnw` (Unix) / `mvnw.cmd` (Windows), que dispensa Maven instalado.
 
-## Regra geral
+## Regras universais
 
-1. Antes de rodar build/teste, confira a versão exigida pelo projeto (.nvmrc, .python-version, .sdkmanrc, engines do package.json, pom.xml).
-2. Comando falhou com erro estranho de sintaxe/engine? Primeira suspeita: versão errada do runtime. Verifique com `node -v` / `python --version` / `java -version`.
-3. Em scripts, prefira PATH absoluto (ex: `~/.nvm/versions/node/v22.23.1/bin`) a depender de função de shell.
+1. Antes de build/teste: confira a versão exigida pelo projeto e ative-a. Não exigida? Use a LTS mais recente instalada.
+2. Erro estranho de sintaxe, engine ou "unsupported class file version"? Primeira suspeita: runtime errado. Rode `node -v`/`python --version`/`java -version` antes de debugar o código.
+3. Em scripts e CI, prefira caminho absoluto do binário a depender de função de shell (nvm/sdkman não existem em shell não interativo).
+4. Wrappers do projeto (`./mvnw`, `./gradlew`, `corepack`) vencem instalação global: use-os quando existirem.

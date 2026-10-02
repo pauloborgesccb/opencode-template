@@ -64,7 +64,7 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 | `java-spring` | Hexagonal por usecase em fatias verticais (arquitetura lyra), modernizada para Spring Boot 4+ |
 | `angular` | Angular 22+: signals, zoneless, standalone, Signal Forms |
 | `fastapi` | Pydantic v2, SQLAlchemy 2, router por domínio, DI com Depends |
-| `version-managers` | nvm, pyenv e sdkman: versões instaladas e ativação em shell não interativo (Node default da máquina é v14!) |
+| `version-managers` | nvm, pyenv e sdkman em Linux, macOS e Windows: descoberta do ambiente, ativação em shell não interativo e alternativas nativas por SO |
 
 **`global/commands/`**:
 
