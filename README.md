@@ -72,6 +72,8 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 |---|---|
 | `/entregar <tarefa>` | Implementa com loop de correção: verifica (typecheck → build → testes → execução real), corrige e repete até passar (máx. 5 ciclos), depois valida com `revisor` e `tester`. Essencial com modelos locais, que tendem a entregar sem iterar |
 
+**MCP Playwright** (no `opencode.jsonc.example`): browser para testes de UI via accessibility tree (não exige modelo com visão). Vem desligado (`"enabled": false`) para não pesar ~20 tools no contexto; ligue com `"enabled": true` no `opencode.jsonc` do projeto que for testar interface.
+
 **`global/tools/pdf.ts`**: tools `pdf_text` (extrai texto de PDF digital) e `pdf_pages` (converte páginas em PNG para modelos com visão). Requer `poppler-utils`.
 
 ## Benchmark de modelos locais
