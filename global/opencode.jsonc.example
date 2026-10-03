@@ -96,6 +96,17 @@
       }
     }
   },
+  "mcp": {
+    // Browser para testes de UI (Playwright). Desligado por padrão: ~20 tools
+    // pesam no contexto dos modelos locais. Ligue com "enabled": true no
+    // opencode.jsonc do projeto que for testar UI.
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@latest"],
+      "enabled": false
+    }
+  },
   "model": "llamacpp/qwen3.8-27b-ud-iq3_s",
-  "small_model": "llamacpp/qwen3.5-9b-mtp"
+  "small_model": "llamacpp/qwen3.5-9b-mtp",
+  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"]
 }
