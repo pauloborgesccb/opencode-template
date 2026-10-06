@@ -14,6 +14,7 @@ MODELS_DIR="$HOME/.lmstudio/models"
 # ===== COMANDOS: atalho|arquivo|descrição =====
 COMANDOS=(
   "qwen27|Qwen3.8-27B-UD-IQ3_S.gguf|driver principal (opencode)"
+  "qwen27-fast|Qwen3.8-27B-UD-IQ3_S.gguf|27B SEM thinking (browser, tarefas mecânicas)"
   "coder|Qwen3-Coder-30B-A3B-Instruct-UD-Q3_K_XL.gguf|código MoE, rápido"
   "qwen35|Qwen3.6-35B-A3B-MTP-UD-IQ3_S.gguf|MoE 35B + MTP speculative"
   "qwen4|Qwen3.5-4B-Q4_K_M.gguf|ultra-rápido"
@@ -107,6 +108,12 @@ case "${ALIAS,,}" in
   gemma*)                 TEMP=1.0;  TOPP=0.95; TOPK=64 ;;
   gpt-oss*)               TEMP=1.0;  TOPP=1.0;  TOPK=0  ;;  # recomendação OpenAI
 esac
+
+# atalho qwen27-fast: mesmo modelo, thinking desligado (sampling de não-thinking)
+if [ "${ATALHO:-}" = "qwen27-fast" ]; then
+  TEMP=0.7; TOPP=0.8
+  XTRA+=(--reasoning off)
+fi
 
 echo
 echo "Modelo   : $MODEL"
