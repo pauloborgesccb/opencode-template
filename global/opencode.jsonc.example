@@ -112,9 +112,12 @@
       "command": ["npx", "-y", "@playwright/mcp@latest"],
       "enabled": false
     },
+    // Browser real do usuário (BrowserOS neo). Desligado no global para não
+    // pesar ~20 tools em toda sessão; ligue com "enabled": true no
+    // opencode.jsonc do projeto que usa browser.
     "browseros-neo": {
       "url": "http://127.0.0.1:9010/mcp",
-      "enabled": true,
+      "enabled": false,
       "type": "remote"
     }
   },

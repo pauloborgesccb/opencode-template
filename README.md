@@ -77,7 +77,7 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 
 | MCP | Papel | Default |
 |---|---|---|
-| `browseros-neo` | Browser real do usuário para agentes (logins, perfil persistente). Preferir para qualquer tarefa de site. Endpoint local: confira a porta na página MCP do BrowserOS (muda entre builds) | ligado |
+| `browseros-neo` | Browser real do usuário para agentes (logins, perfil persistente). Preferir para qualquer tarefa de site. Endpoint local: confira a porta na página MCP do BrowserOS (muda entre builds) | desligado; ligue por projeto |
 | `playwright` | Automação limpa SEM perfil/logins: testes de UI isolados e benchmark headless | desligado; ligue por projeto |
 
 **`global/tools/pdf.ts`**: tools `pdf_text` (extrai texto de PDF digital) e `pdf_pages` (converte páginas em PNG para modelos com visão). Requer `poppler-utils`.
