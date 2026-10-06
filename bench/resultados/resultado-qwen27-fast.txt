@@ -1,0 +1,18 @@
+  1) backend sobe + seed                               FAIL
+  2) frontend builda                                   FAIL
+  3-5) pulados (backend fora do ar)                    FAIL
+  6) typecheck backend sem erro                        FAIL
+
+PLACAR AUTOMÁTICO: 0/6
+Critério manual restante: criar despesa pela UI atualiza lista/resumo sem reload.
+
+=== DIAGNÓSTICO ===
+--- backend (últimas 15 linhas) ---
+--- frontend build (últimas 10 linhas) ---
+/home/pauloborges/bench/validate.sh: linha 26: cd: frontend: Arquivo ou diretório inexistente
+--- estrutura entregue ---
+.
+./opencode.jsonc
+./AGENTS.md
+modelo: qwen27-fast
+tempo_total_s: 229
