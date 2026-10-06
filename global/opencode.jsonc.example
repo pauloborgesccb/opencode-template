@@ -29,7 +29,14 @@
     },
 
     "webfetch": "allow",
-    "external_directory": "ask"
+    "external_directory": {
+      "/tmp/**": "allow",
+      "/home/pauloborges/.sdkman/**": "allow",
+      "/home/pauloborges/.m2/**": "allow",
+      "/home/pauloborges/.mvn/**": "allow",
+      "/home/pauloborges/.pyenv/**": "allow",
+      "/home/pauloborges/projetos/**": "allow"
+    }
   },
   "media": {
     "image": {
@@ -104,6 +111,11 @@
       "type": "local",
       "command": ["npx", "-y", "@playwright/mcp@latest"],
       "enabled": false
+    },
+    "browseros-neo": {
+      "url": "http://127.0.0.1:9010/mcp",
+      "enabled": true,
+      "type": "remote"
     }
   },
   "model": "llamacpp/qwen3.8-27b-ud-iq3_s",

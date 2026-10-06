@@ -65,6 +65,7 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 | `angular` | Angular 22+: signals, zoneless, standalone, Signal Forms |
 | `fastapi` | Pydantic v2, SQLAlchemy 2, router por domínio, DI com Depends |
 | `version-managers` | nvm, pyenv e sdkman em Linux, macOS e Windows: descoberta do ambiente, ativação em shell não interativo e alternativas nativas por SO |
+| `browseros-neo` | Browser real dedicado a agentes (BrowserOS neo via MCP): logins vivos, perfil persistente, loop snapshot→act→verify. Skill da comunidade, em inglês |
 
 **`global/commands/`**:
 
@@ -72,7 +73,12 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 |---|---|
 | `/entregar <tarefa>` | Implementa com loop de correção: verifica (typecheck → build → testes → execução real), corrige e repete até passar (máx. 5 ciclos), depois valida com `revisor` e `tester`. Essencial com modelos locais, que tendem a entregar sem iterar |
 
-**MCP Playwright** (no `opencode.jsonc.example`): browser para testes de UI via accessibility tree (não exige modelo com visão). Vem desligado (`"enabled": false`) para não pesar ~20 tools no contexto; ligue com `"enabled": true` no `opencode.jsonc` do projeto que for testar interface.
+**MCPs de browser** (no `opencode.jsonc.example`), papéis distintos:
+
+| MCP | Papel | Default |
+|---|---|---|
+| `browseros-neo` | Browser real do usuário para agentes (logins, perfil persistente). Preferir para qualquer tarefa de site. Endpoint local: confira a porta na página MCP do BrowserOS (muda entre builds) | ligado |
+| `playwright` | Automação limpa SEM perfil/logins: testes de UI isolados e benchmark headless | desligado; ligue por projeto |
 
 **`global/tools/pdf.ts`**: tools `pdf_text` (extrai texto de PDF digital) e `pdf_pages` (converte páginas em PNG para modelos com visão). Requer `poppler-utils`.
 
