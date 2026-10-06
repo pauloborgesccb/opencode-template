@@ -82,6 +82,20 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 
 **`global/tools/pdf.ts`**: tools `pdf_text` (extrai texto de PDF digital) e `pdf_pages` (converte páginas em PNG para modelos com visão). Requer `poppler-utils`.
 
+## Guia de bolso: qual modelo usar
+
+Baseado em medição própria (ver [bench/](bench/)), não em opinião:
+
+| Situação | Modelo | Por quê |
+|---|---|---|
+| Tarefa autônoma / `/entregar` / implementação completa | `qwen27` (thinking ligado) | Única config com 6/6 (2x); o MESMO modelo sem thinking faz 0/6 |
+| Dev interativo, humano revisando | `coder` | 4/6 em 497s, direto, sem token de raciocínio |
+| Browser (BrowserOS/Playwright) e tarefas mecânicas | `coder` ou `qwen27-fast` | Thinking em browser = 30k tokens para abrir uma página |
+| Pergunta rápida, tarefa de um passo | `qwen9` (Q8+MTP) | 135 tok/s com 4/6 de qualidade |
+| Visão (imagem, PDF escaneado) | `gemma12-vis` ou `qwen27-vis` | Únicos com mmproj ativo |
+
+Regra de ouro medida: **agente sozinho = thinking ligado; humano no loop ou tarefa mecânica = modelo direto.**
+
 ## Benchmark de modelos locais
 
 A pasta [`bench/`](bench/) traz o harness completo para medir se um modelo local serve como agente (placar automático de 6 critérios), os resultados já obtidos e as lições do ciclo de melhoria. Ver [bench/README.md](bench/README.md).
