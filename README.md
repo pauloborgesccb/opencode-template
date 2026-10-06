@@ -88,13 +88,14 @@ Baseado em medição própria (ver [bench/](bench/)), não em opinião:
 
 | Situação | Modelo | Por quê |
 |---|---|---|
-| Tarefa autônoma / `/entregar` / implementação completa | `qwen27` (thinking ligado) | Única config com 6/6 (2x); o MESMO modelo sem thinking faz 0/6 |
+| Tarefa autônoma SEM rede de proteção | `qwen27` (thinking) | 6/6 em 2/2 rodadas; é o seguro contra a falha silenciosa |
+| Tarefa autônoma COM verificação (`/entregar`, CI, testes) | `qwen27-fast` | 6/6 em 2/3 rodadas e 2-4x mais rápido; a verificação pega o 1/3 que desiste cedo e basta re-rodar |
 | Dev interativo, humano revisando | `coder` | 4/6 em 497s, direto, sem token de raciocínio |
 | Browser (BrowserOS/Playwright) e tarefas mecânicas | `coder` ou `qwen27-fast` | Thinking em browser = 30k tokens para abrir uma página |
 | Pergunta rápida, tarefa de um passo | `qwen9` (Q8+MTP) | 135 tok/s com 4/6 de qualidade |
 | Visão (imagem, PDF escaneado) | `gemma12-vis` ou `qwen27-vis` | Únicos com mmproj ativo |
 
-Regra de ouro medida: **agente sozinho = thinking ligado; humano no loop ou tarefa mecânica = modelo direto.**
+Regra de ouro medida: **thinking compra consistência, não capacidade. Sem rede de proteção = thinking; com verificação automática ou humano no loop = modelo direto.**
 
 ## Benchmark de modelos locais
 
