@@ -18,7 +18,6 @@ COMANDOS=(
   "coder|Qwen3-Coder-30B-A3B-Instruct-UD-Q3_K_XL.gguf|código MoE, rápido"
   "qwen35|Qwen3.6-35B-A3B-MTP-UD-IQ3_S.gguf|MoE 35B + MTP speculative"
   "qwen4|Qwen3.5-4B-Q4_K_M.gguf|ultra-rápido"
-  "oss|gpt-oss-20b-MXFP4.gguf|agêntico MoE, contexto folgado"
   "gemma12|gemma-4-12B-it-QAT-Q4_0.gguf|generalista"
   "qwen9|Qwen3.5-9B-MTP-Q8_0.gguf|rápido e preciso (Q8 + MTP)"
 )
