@@ -29,6 +29,7 @@
     },
 
     "webfetch": "allow",
+    "websearch": "allow",
     "external_directory": {
       "/tmp/**": "allow",
       "/home/pauloborges/.sdkman/**": "allow",
