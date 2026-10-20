@@ -165,6 +165,6 @@ fi
 ARGS+=("$@")
 
 lms unload --all 2>/dev/null   # libera VRAM se o LM Studio tiver algo carregado
-pkill -x llama-server 2>/dev/null && sleep 1   # mata instância anterior segurando a porta
+pkill -x llama-server 2>/dev/null && sleep 4   # mata instância anterior e espera a VRAM ser devolvida
 
 exec "$BIN" "${ARGS[@]}"

@@ -110,9 +110,19 @@
     // pesar ~20 tools em toda sessão; ligue com "enabled": true no
     // opencode.jsonc do projeto que usa browser.
     "browseros-neo": {
-      "url": "http://127.0.0.1:9010/mcp",
-      "enabled": false,
+      "url": "http://127.0.0.1:9012/mcp",
+      "enabled": true,
       "type": "remote"
+    },
+    "rea": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "rea-agents@6.5.0",
+        "mcp"
+      ],
+      "enabled": true
     }
   },
   "model": "llamacpp/qwen3.8-27b-ud-iq3_s",
