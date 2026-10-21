@@ -96,7 +96,12 @@ fi
 TEMP=0.7; TOPP=0.95; TOPK=40; MINP=0.0; RP=1.0; XTRA=()
 case "${ALIAS,,}" in
   qwen3.8-*|*qwq*)        TEMP=0.6;  TOPP=0.95; TOPK=20     # Qwen thinking
-                          CTX=45056  # teto robusto: 61440 vivia na borda e passou a OOMar (overhead do sistema cresceu ~1GB)
+                          # contexto dinâmico: o MTP custa ~1.2GB; escolhe o maior ctx que cabe
+                          # na VRAM livre AGORA com ~1GB de folga (desktop pesado degrada com elegância)
+                          FREE=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits 2>/dev/null || echo 0)
+                          if   [ "$FREE" -ge 15400 ]; then CTX=61440
+                          elif [ "$FREE" -ge 15000 ]; then CTX=53248
+                          else CTX=45056; fi
                           XTRA=(--spec-type draft-mtp --spec-draft-n-max 2) ;;  # MTP nativo: +58% medido
   qwen3-coder*)           TEMP=0.7;  TOPP=0.8;  TOPK=20; RP=1.05
                           XTRA=(--n-cpu-moe 8) ;;  # experts de 8 camadas na RAM: libera ~2 GiB de VRAM
