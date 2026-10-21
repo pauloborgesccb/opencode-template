@@ -96,6 +96,7 @@ fi
 TEMP=0.7; TOPP=0.95; TOPK=40; MINP=0.0; RP=1.0; XTRA=()
 case "${ALIAS,,}" in
   qwen3.8-*|*qwq*)        TEMP=0.6;  TOPP=0.95; TOPK=20     # Qwen thinking
+                          CTX=45056  # teto robusto: 61440 vivia na borda e passou a OOMar (overhead do sistema cresceu ~1GB)
                           XTRA=(--spec-type draft-mtp --spec-draft-n-max 2) ;;  # MTP nativo: +58% medido
   qwen3-coder*)           TEMP=0.7;  TOPP=0.8;  TOPK=20; RP=1.05
                           XTRA=(--n-cpu-moe 8) ;;  # experts de 8 camadas na RAM: libera ~2 GiB de VRAM

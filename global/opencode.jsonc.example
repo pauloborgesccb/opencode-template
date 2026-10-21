@@ -61,7 +61,7 @@
           "name": "Qwen 3.8 27B IQ3_S (llama)",
           "reasoning": true,
           "tools": true,
-          "limit": { "context": 61440, "output": 16384 }
+          "limit": { "context": 45056, "output": 16384 }
         },
         "qwen3.6-35b-a3b-mtp": {
           "id": "qwen3.6-35b-a3b-mtp",
