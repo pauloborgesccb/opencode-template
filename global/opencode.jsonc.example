@@ -1,7 +1,10 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  // auto false: o billion-context (plugin abaixo) é dono da compressão de
+  // contexto; a auto-compaction nativa dupla seria redundante. Sem o plugin,
+  // volte para true.
   "compaction": {
-    "auto": true,
+    "auto": false,
     "prune": true,
     "reserved": 8192
   },
@@ -127,5 +130,13 @@
   },
   "model": "llamacpp/qwen3.8-27b-ud-iq3_s",
   "small_model": "llamacpp/qwen3.5-9b-mtp",
-  "plugin": ["superpowers@git+https://github.com/obra/superpowers.git"]
+  // billion-context: compressão incremental de contexto (tools compress/
+  // decompress/search_context/acp_status + /acp). Requer o proxy instalado:
+  //   npm install -g billion-context --prefix=~/.local   (node >= 20)
+  //   bili plugin install opencode
+  // https://github.com/ranxianglei/billion-context
+  "plugin": [
+    "superpowers@git+https://github.com/obra/superpowers.git",
+    "billion-context"
+  ]
 }

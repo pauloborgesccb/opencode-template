@@ -82,6 +82,15 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 
 **`global/tools/pdf.ts`**: tools `pdf_text` (extrai texto de PDF digital) e `pdf_pages` (converte páginas em PNG para modelos com visão). Requer `poppler-utils`.
 
+**Compressão de contexto ([billion-context](https://github.com/ranxianglei/billion-context))**: proxy que comprime a conversa consumida em resumos incrementais e reversíveis, decididos pelo próprio modelo (tools `compress`/`decompress`/`search_context`/`acp_status`, painel `/acp`). Especialmente útil com modelos locais de contexto pequeno (32-61k): a sessão não morre ao estourar a janela. O `opencode.jsonc.example` já registra o plugin e desliga a `compaction.auto` nativa (o bili passa a ser o dono da compressão). Instalação por máquina (node >= 20):
+
+```bash
+npm install -g billion-context --prefix=~/.local
+bili plugin install opencode
+```
+
+Também funciona no Claude Code (`bili plugin install claude`) e em outros clients; ver [CLIENTS.md](https://github.com/ranxianglei/billion-context/blob/master/CLIENTS.md). Atenção: a aba Code do Claude Desktop ignora o proxy (issue #2290); só sessões de terminal são comprimidas.
+
 ## Guia de bolso: qual modelo usar
 
 Baseado em medição própria (ver [bench/](bench/)), não em opinião:
@@ -168,3 +177,4 @@ MCP local roda sobre stdio; remoto usa Streamable HTTP com OAuth/PKCE. `"disable
 - [Custom Tools](https://opencode.ai/v2/docs/custom-tools/)
 - [MCP Servers](https://opencode.ai/v2/docs/mcp-servers)
 - [Plugins](https://opencode.ai/v2/docs/plugins)
+- [billion-context](https://github.com/ranxianglei/billion-context) (compressão de contexto)
