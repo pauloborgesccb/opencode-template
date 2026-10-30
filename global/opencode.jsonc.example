@@ -134,8 +134,11 @@
   //   npm install -g billion-context --prefix=~/.local   (node >= 20)
   //   bili plugin install opencode
   // https://github.com/ranxianglei/billion-context
+  // superpowers removido (2026-10-30): o bootstrap injetado por sessão + corpos
+  // de skills de 9-33KB que ele obriga a carregar consomem demais o contexto de
+  // modelos locais (32-61k) e multiplicam rodadas. Usar só em projeto com
+  // modelo de nuvem, se fizer sentido.
   "plugin": [
-    "superpowers@git+https://github.com/obra/superpowers.git",
     "billion-context"
   ]
 }
