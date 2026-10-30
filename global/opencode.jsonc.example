@@ -125,19 +125,6 @@
       "url": "http://127.0.0.1:9012/mcp",
       "enabled": false,
       "type": "remote"
-    },
-    // Reverse engineering (REA). Desligado no global: são ~230 tools cujos
-    // schemas somam ~850KB (~268k tokens) em TODA request do agente build,
-    // o que estoura qualquer contexto local. Ligue só no projeto que usar.
-    "rea": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "rea-agents@6.5.0",
-        "mcp"
-      ],
-      "enabled": false
     }
   },
   "model": "llamacpp/qwen3.8-27b-ud-iq3_s",
