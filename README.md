@@ -91,6 +91,40 @@ bili plugin install opencode
 
 Também funciona no Claude Code (`bili plugin install claude`) e em outros clients; ver [CLIENTS.md](https://github.com/ranxianglei/billion-context/blob/master/CLIENTS.md). Atenção: a aba Code do Claude Desktop ignora o proxy (issue #2290); só sessões de terminal são comprimidas.
 
+## Acesso remoto (`opencode web`)
+
+Para usar o opencode pelo navegador (inclusive do celular):
+
+```bash
+OPENCODE_SERVER_PASSWORD=<senha-forte> opencode web --port 4096 --hostname 0.0.0.0
+```
+
+```bash
+ngrok http 4096
+```
+
+Abra a URL do ngrok no navegador e informe usuário `opencode` + a senha.
+
+**Segurança (obrigatório):**
+
+- A variável é `OPENCODE_SERVER_PASSWORD`. `OPENCODE_PASSWORD` NÃO existe e é ignorada silenciosamente: o servidor sobe **sem autenticação nenhuma** (testado na 1.19.5). Como o servidor executa comandos na máquina, nunca exponha túnel sem essa variável setada e com senha longa.
+- O aviso `OPENCODE_SERVER_PASSWORD is not set; server is unsecured` no startup é literal: se apareceu, não abra túnel.
+
+**Escolha do túnel** (o web UI recebe tudo em tempo real por SSE em `/global/event`; túnel que bufferiza SSE congela a tela em "Pensando" e os modais de permissão só aparecem com F5):
+
+| Túnel | Tempo real | Observação |
+|---|---|---|
+| `ngrok http 4096` | funciona | Testado; eventos chegam ao vivo |
+| Cloudflare Quick Tunnel (`cloudflared tunnel --url`) | NÃO funciona | [Limitação documentada](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/): Quick Tunnels não suportam SSE. Não é bug do opencode |
+| Cloudflare Named Tunnel | funciona | Requer domínio na Cloudflare |
+| Tailscale/WireGuard | funciona | Mais seguro: nada fica público |
+
+Para testar se um túnel entrega SSE em tempo real (esperado: `server.connected` imediato + `server.heartbeat` a cada 10s; nada em 25s = túnel bufferiza):
+
+```bash
+curl -sN -u "opencode:<senha>" https://<url-do-tunel>/global/event | while IFS= read -r l; do echo "[$(date +%T)] $l"; done
+```
+
 ## Guia de bolso: qual modelo usar
 
 Baseado em medição própria (ver [bench/](bench/)), não em opinião:
