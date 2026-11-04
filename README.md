@@ -66,6 +66,7 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 | `fastapi` | Pydantic v2, SQLAlchemy 2, router por domínio, DI com Depends |
 | `version-managers` | nvm, pyenv e sdkman em Linux, macOS e Windows: descoberta do ambiente, ativação em shell não interativo e alternativas nativas por SO |
 | `browseros-neo` | Browser real dedicado a agentes (BrowserOS neo via MCP): logins vivos, perfil persistente, loop snapshot→act→verify. Skill da comunidade, em inglês |
+| `regras-de-resposta` | Regras permanentes de concisão, precisão e formato para todas as respostas (teto de 2.000 caracteres, sem U+2014, direto ao ponto) |
 
 **`global/commands/`**:
 
