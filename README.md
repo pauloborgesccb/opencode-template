@@ -69,6 +69,7 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 | `regras-de-resposta` | Regras permanentes de concisão, precisão e formato para todas as respostas (teto de 2.000 caracteres, sem U+2014, direto ao ponto) |
 | `auditoria-pre-publicacao` | Conformidade antes de publicar: privacidade, LGPD, cookies, acessibilidade WCAG 2.2 AA, transparência comercial. Checklist de 17 requisitos e parecer final. Só roda sob pedido explícito |
 | `auditoria-seguranca-dast` | Varredura dinâmica de segurança em alvo local com OWASP ZAP, Nuclei e Nmap, mais testes manuais com curl e relatório em PDF por severidade. Traz `scripts/` próprios. Só roda sob pedido explícito |
+| `publicar-lojas-capacitor` | Publicação automática nas lojas em apps Capacitor (padrão validado no AoVivinho): tag `v*` publica Android na faixa interna e iOS no TestFlight; push em branch não faz nada. Traz `templates/` (workflows, Fastfiles, Matchfile, scheme) com placeholders `{{BUNDLE_ID}}`/`{{TEAM_ID}}`/`{{ORG}}`/`{{CERT_REPO}}`. Uso: no projeto Capacitor, peça "configure a publicação automática nas lojas" e informe bundle id, org, repo de certificados e Team ID; o agente monta arquivos e workflows e te passa o checklist de contas/secrets (guia narrativo em `contrictor/docs-uteis/README-CI.md`) |
 
 **`global/commands/`**:
 

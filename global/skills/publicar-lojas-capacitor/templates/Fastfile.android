@@ -1,0 +1,31 @@
+default_platform(:android)
+
+platform :android do
+  desc 'Gera o AAB assinado e publica na faixa interna do Google Play'
+  lane :internal do
+    gradle(task: 'clean')
+    gradle(task: 'bundle', build_type: 'Release')
+    upload_to_play_store(
+      track: 'internal',
+      # Enquanto o app não for publicado na Play, releases precisam ser draft
+      release_status: 'draft',
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+
+  desc 'Promove a versão da faixa interna para produção'
+  lane :production do
+    upload_to_play_store(
+      track: 'internal',
+      track_promote_to: 'production',
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_changelogs: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end

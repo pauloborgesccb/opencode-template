@@ -1,0 +1,55 @@
+name: Android Release
+
+# Push em branch (develop, main, etc) não dispara nada.
+# Tag v* gera o AAB assinado e publica na faixa interna do Google Play.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # Lê a versão do .ruby-version; cache do bundler usa o Gemfile.lock
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Instalar dependências e build web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build:prod
+          npx cap sync android
+
+      - name: Restaurar chave da Play Store
+        env:
+          PLAY_STORE_JSON_KEY: ${{ secrets.PLAY_STORE_JSON_KEY }}
+        run: printf '%s' "$PLAY_STORE_JSON_KEY" > android/play-store-key.json
+
+      - name: Publicar na faixa interna
+        working-directory: android
+        env:
+          BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            export VERSION_NAME="${GITHUB_REF_NAME#v}"
+          fi
+          bundle exec fastlane android internal

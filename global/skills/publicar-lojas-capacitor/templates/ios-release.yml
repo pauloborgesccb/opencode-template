@@ -1,0 +1,50 @@
+name: iOS Release
+
+# Push em branch (develop, main, etc) não dispara nada.
+# Tag v* builda e envia pro TestFlight; workflow_dispatch segue disponível pra rodar avulso.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Chave SSH (deploy key) com acesso de escrita ao repo de certificados do match
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.MATCH_SSH_KEY }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # Lê a versão do .ruby-version; cache do bundler usa o Gemfile.lock
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Instalar dependências e build web
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build:prod
+          npx cap sync ios
+
+      - name: Build e TestFlight
+        working-directory: ios/App
+        env:
+          BUNDLE_GEMFILE: ${{ github.workspace }}/Gemfile
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          VERSION_CODE: ${{ github.run_number }}
+        run: bundle exec fastlane ios beta
