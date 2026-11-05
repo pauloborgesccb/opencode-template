@@ -11,6 +11,7 @@ Guia narrativo completo (contas, telas, 10 erros resolvidos): `contrictor/docs-u
 
 ## Passo a passo (agente)
 
+0. Pergunte primeiro: "Quer que eu crie tudo sozinho nas lojas usando o BrowserOS neo? Só precisa estar logado nas contas Google (Play Console + Google Cloud) e Apple (como Titular)." Se sim, siga também o "Modo automático via BrowserOS" abaixo; se não, o passo 7 vira checklist pro usuário.
 1. Colete do usuário: bundle/package id, nome do repo de certificados iOS (ex: `certificados-ios`), org GitHub, Apple Team ID (sai do log do match ou da membership). Substitua `{{BUNDLE_ID}}`, `{{TEAM_ID}}`, `{{ORG}}`, `{{CERT_REPO}}` nos templates.
 2. Base do repo: copie `templates/Gemfile` pra raiz; gere `Gemfile.lock` com Ruby 3.3 (rbenv: `rbenv local 3.3.x && bundle install`) e commite lockfile + `.ruby-version`. Garanta `.sdkmanrc` com Java 21 (Java 25 quebra Gradle 8.14) e, com pnpm 11+, `allowBuilds` resolvido no `pnpm-workspace.yaml`.
 3. Android:
@@ -30,6 +31,19 @@ Guia narrativo completo (contas, telas, 10 erros resolvidos): `contrictor/docs-u
    - Play: criar o app; service account no projeto GCP `contrictor` com a API "Google Play Android Developer" habilitada + chave JSON; convidar o e-mail no Play Console com as 4 permissões de release (sem isso: "The caller does not have permission"); primeiro AAB é upload manual.
    - Apple: bundle ID + app no App Store Connect; API key "Gerente de apps" (acesso só o Titular solicita; `.p8` baixa 1 vez); repo privado de certificados (só conteúdo criptografado do match, nunca o `.p8`).
 8. Teste: tag `v0.0.1` (ou dispatch no iOS) e acompanhe os runs. Erros conhecidos: tabela "Erros já vividos" do README-CI.md.
+
+## Modo automático via BrowserOS (opcional, validado no AoVivinho)
+
+Pré-requisito: usuário logado no BrowserOS neo nas contas Google e Apple (Titular). Execute pelo browser, nesta ordem:
+
+1. Play Console: Criar app (nome, package, App, Grátis, declarações).
+2. Google Cloud (projeto `contrictor` ou o que o usuário indicar): criar service account `fastlane-<app>` sem papel; habilitar a API "Google Play Android Developer"; Keys > Add key > JSON (baixa em ~/Downloads do usuário).
+3. Play Console > Usuários e permissões: convidar o e-mail da service account com as 4 permissões de release. Se o ambiente bloquear concessão de permissão, deixe o formulário pronto e passe ao usuário a lista exata das 4.
+4. Apple: registrar bundle ID (App ID explicit); criar app no App Store Connect (Novo app, pt-BR, SKU = nome do app, acesso total); solicitar acesso à API em Integrações (só Titular; aprovação imediata) e gerar key "Gerente de apps"; ler Key ID, Issuer ID e Team ID das páginas.
+5. GitHub: cadastrar a deploy key pública no repo de certificados (write); confirmação sudo é do usuário (request_human_help).
+6. TestFlight: no primeiro build, responder o compliance do build existente (Gerenciar > "Nenhum dos algoritmos"); os próximos já saem resolvidos pelo Info.plist.
+
+Sempre do usuário (nunca do agente): colar valores de secrets no GitHub, baixar/guardar o `.p8`, 2FA/sudo, e o upload manual do primeiro AAB (pode ser guiado pelo browser até a tela).
 
 ## Pós-publicação
 
