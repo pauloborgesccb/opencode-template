@@ -1,0 +1,5 @@
+{
+  "app": "Frontend APP (porta 4200)",
+  "adm": "Frontend ADMIN (porta 4201)",
+  "api": "Backend/API (porta 3000)"
+}

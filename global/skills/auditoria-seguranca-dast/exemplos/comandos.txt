@@ -1,0 +1,32 @@
+FERRAMENTAS E VERSÕES
+
+  OWASP ZAP        <versão>      imagem zaproxy/zap-stable (modo daemon)
+  Nuclei           <versão>      imagem projectdiscovery/nuclei
+  Templates Nuclei               baixados pela imagem no momento da execução, em AAAA-MM-DD
+  Nmap             <versão>      imagem uzyexe/nmap
+  Node.js          <versão>      versão do .gitlab-ci.yml dos repositórios
+  curl                           testes manuais dirigidos
+
+Registre aqui se as ferramentas estavam instaladas ou foram executadas em container,
+e se o Docker local roda em VM, porque isso muda o endereço usado nos alvos.
+
+PREPARAÇÃO DO AMBIENTE
+  (comandos usados para subir cada alvo, com as variáveis de ambiente necessárias)
+
+NMAP
+  (comando completo)
+
+NUCLEI
+  (um comando por alvo)
+
+OWASP ZAP EM MODO DAEMON
+  (comando do container, regras desabilitadas e sequência de chamadas da API)
+
+IMPORTAÇÃO DA SPEC OPENAPI
+  (como a spec foi obtida, filtrada e importada)
+
+TESTES MANUAIS DIRIGIDOS
+  (os curl executados)
+
+COBERTURA E LIMITAÇÕES
+  (o que ficou de fora e por quê)

@@ -1,0 +1,22 @@
+[
+  {
+    "titulo": "Título curto e específico, dizendo o que está errado",
+    "severidade": "Alto",
+    "alvo": "Backend/API (porta 3000)",
+    "endpoint": "GET /rota, GET /outra-rota",
+    "parametro": "nenhum (rota pública)",
+    "descricao": "O que acontece, por que importa e qual o impacto concreto para este sistema. Evite texto genérico de catálogo.",
+    "evidencia": "O comando exato e o que ele devolveu. Cite chaves do payload, nunca valores. Nunca inclua senha, token ou conteúdo de .env.",
+    "recomendacao": "A correção concreta, apontando arquivo e linha quando souber, mais a mitigação temporária se a correção for demorada."
+  },
+  {
+    "titulo": "Controle positivo: limite de tentativas de login ativo",
+    "severidade": "Informativo",
+    "alvo": "Backend/API (porta 3000)",
+    "endpoint": "POST /auth/login",
+    "parametro": "email e senha",
+    "descricao": "Item verificado e aprovado. Registre no relatório também o que foi testado e está correto, não apenas o que falhou.",
+    "evidencia": "Doze POST consecutivos com credencial inválida devolveram 401 nas dez primeiras tentativas e 429 depois.",
+    "recomendacao": "Nenhuma ação necessária neste ponto."
+  }
+]

@@ -54,7 +54,7 @@ O script faz backup do que sobrescrever e nunca troca seu `opencode.jsonc` exist
 
 Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; mudança média/grande consulta `arquiteto` antes e valida com `revisor` → `tester` → `qualidade` → `arquiteto` depois.
 
-**`global/skills/`**, padrões por stack (carregadas quando a tarefa bate com a descrição):
+**`global/skills/`**, padrões por stack e fluxos de trabalho (carregadas quando a tarefa bate com a descrição):
 
 | Skill | Base |
 |---|---|
@@ -67,6 +67,8 @@ Fluxo: mudança pequena (1-2 arquivos) implementa direto e valida com `tester`; 
 | `version-managers` | nvm, pyenv e sdkman em Linux, macOS e Windows: descoberta do ambiente, ativação em shell não interativo e alternativas nativas por SO |
 | `browseros-neo` | Browser real dedicado a agentes (BrowserOS neo via MCP): logins vivos, perfil persistente, loop snapshot→act→verify. Skill da comunidade, em inglês |
 | `regras-de-resposta` | Regras permanentes de concisão, precisão e formato para todas as respostas (teto de 2.000 caracteres, sem U+2014, direto ao ponto) |
+| `auditoria-pre-publicacao` | Conformidade antes de publicar: privacidade, LGPD, cookies, acessibilidade WCAG 2.2 AA, transparência comercial. Checklist de 17 requisitos e parecer final. Só roda sob pedido explícito |
+| `auditoria-seguranca-dast` | Varredura dinâmica de segurança em alvo local com OWASP ZAP, Nuclei e Nmap, mais testes manuais com curl e relatório em PDF por severidade. Traz `scripts/` próprios. Só roda sob pedido explícito |
 
 **`global/commands/`**:
 
@@ -179,6 +181,8 @@ Atenção: o formato em array `[{ action, resource, effect }]` NÃO existe no sc
 ### Skills
 
 `SKILL.md` em `<fonte>/skills/<id>/`. O ID vem do caminho. `description` é obrigatória e é o gatilho de carregamento: escreva com as palavras que o pedido usaria.
+
+A skill pode levar arquivos de apoio no mesmo diretório (`scripts/`, `exemplos/`, referências). O `install.sh` copia a pasta inteira, então o SKILL.md referencia esses arquivos por caminho relativo à própria skill. Tire do SKILL.md o que for procedimento longo ou código repetido e deixe no script: o markdown é contexto carregado, o script não.
 
 ### Tools customizadas
 

@@ -1,0 +1,11 @@
+{
+  "titulo": "Auditoria de segurança <projeto>",
+  "subtitulo": "Análise dinâmica dos três projetos em ambiente local. Data: AAAA-MM-DD. Alvos: 127.0.0.1:4200 (APP), 127.0.0.1:4201 (ADMIN) e 127.0.0.1:3000 (Backend/API).",
+  "destaque": "Uma ou duas frases dizendo onde está o risco real, para quem só lê a primeira página.",
+  "escopo": [
+    "Esta varredura rodou sem autenticação. As áreas logadas e as N rotas que respondem 401 não foram exercitadas. Controle de acesso entre papéis e IDOR ficam para uma segunda passada com credenciais de teste.",
+    "As operações PATCH e DELETE ficaram fora da varredura ativa, por decisão de não disparar escrita destrutiva contra a base local.",
+    "A regra de DOM XSS do ZAP ficou desabilitada porque esgotava a memória do container. XSS baseado em DOM não foi coberto.",
+    "Os frontends foram testados sob o servidor de desenvolvimento. Parte dos achados de cabeçalho e de listagem de diretório é artefato desse servidor e precisa ser reconfirmada sobre o build de produção."
+  ]
+}
