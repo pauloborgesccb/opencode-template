@@ -1,0 +1,10 @@
+<!-- Dentro de <application> em android/app/src/main/AndroidManifest.xml.
+     Sem este meta-data o app CRASHA na inicialização do SDK (abre e fecha).
+     Use o App ID do app (ca-app-pub-...~...), não o unit ID. -->
+<meta-data
+    android:name="com.google.android.gms.ads.APPLICATION_ID"
+    android:value="{{ANDROID_APP_ID}}" />
+
+<!-- Fora de <application>, junto das demais permissões: -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="com.google.android.gms.permission.AD_ID" />

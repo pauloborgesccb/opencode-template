@@ -1,0 +1,13 @@
+<!-- Dentro do <dict> raiz de ios/App/App/Info.plist.
+     Sem GADApplicationIdentifier o app crasha ao iniciar o SDK. -->
+<key>GADApplicationIdentifier</key>
+<string>{{IOS_APP_ID}}</string>
+<key>NSUserTrackingUsageDescription</key>
+<string>Seu identificador é usado para exibir anúncios mais relevantes e manter o app gratuito.</string>
+<key>SKAdNetworkItems</key>
+<array>
+  <dict>
+    <key>SKAdNetworkIdentifier</key>
+    <string>cstr6suwn9.skadnetwork</string>
+  </dict>
+</array>
