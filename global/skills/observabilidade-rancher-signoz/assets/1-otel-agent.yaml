@@ -1,0 +1,273 @@
+# =============================================================================
+# otel-agent : DaemonSet que coleta log de pod e metrica de node/pod/container
+#
+# Le /var/log/pods em cada node (filelog) e /stats/summary do kubelet
+# (kubeletstats), e manda tudo para o collector do SigNoz por OTLP.
+#
+# PLACEHOLDERS a trocar antes de aplicar:
+#   <NAMESPACES>  -> uma linha de include por namespace com aplicacao
+#                    (ex: dev_*, hlg_*, prd_*). Namespace de infra fica de fora.
+# =============================================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-agent
+  namespace: observability
+
+---
+# O k8sattributes precisa ler pod/namespace/replicaset para enriquecer o log
+# com k8s.pod.name, k8s.deployment.name e afins. So leitura.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-agent
+rules:
+  - apiGroups: ['']
+    resources: ['pods', 'namespaces', 'nodes']
+    verbs: ['get', 'list', 'watch']
+  # o kubeletstats le /stats/summary direto no kubelet de cada node
+  - apiGroups: ['']
+    resources: ['nodes/stats']
+    verbs: ['get']
+  - apiGroups: ['apps']
+    resources: ['replicasets']
+    verbs: ['get', 'list', 'watch']
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-agent
+subjects:
+  - kind: ServiceAccount
+    name: otel-agent
+    namespace: observability
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-agent
+  namespace: observability
+data:
+  config.yaml: |
+    extensions:
+      file_storage/checkpoint:
+        directory: /var/lib/otel-agent
+
+    receivers:
+      # CPU, memoria e disco por node, pod e container, lidos da summary API
+      # do kubelet. E o que faltava para olhar para tras depois de uma trava:
+      # sem isso so da para medir no processo vivo.
+      kubeletstats:
+        collection_interval: 30s
+        auth_type: serviceAccount
+        # pelo IP, nao pelo nome: o nome do node nao resolve no DNS do cluster
+        endpoint: https://${env:K8S_NODE_IP}:10250
+        insecure_skip_verify: true
+        metric_groups: [node, pod, container, volume]
+      filelog:
+        include:
+          - /var/log/pods/dev_*/*/*.log
+          - /var/log/pods/hlg_*/*/*.log
+          - /var/log/pods/prd_*/*/*.log
+        exclude:
+          # o proprio agente, para nao realimentar a fila com o log dele
+          - /var/log/pods/observability_otel-agent-*/*/*.log
+        start_at: end
+        include_file_path: true
+        include_file_name: false
+        storage: file_storage/checkpoint
+        retry_on_failure:
+          enabled: true
+        operators:
+          # entende o formato do containerd e tira namespace, pod e container
+          # do caminho do arquivo, sem precisar consultar a API por linha
+          - type: container
+            id: container-parser
+            add_metadata_from_filepath: true
+          # O Nest escreve o nivel colorido no meio da linha, sempre seguido do
+          # reset ANSI: "...\x1b[33m   WARN\x1b[39m...". Sem isto todo log entra
+          # com severidade vazia e filtrar por erro no SigNoz nao funciona.
+          # on_error: send -> linha que nao casa (Liquibase, Java, nginx) passa
+          # assim mesmo, nunca e descartada.
+          - type: regex_parser
+            id: nest-nivel
+            parse_from: body
+            on_error: send
+            # so as linhas do Nest entram no parser; sem o if o operador
+            # registra "regex pattern does not match" para cada linha de
+            # Liquibase, Java ou nginx e inunda o log do proprio agente
+            if: 'body matches "\\[Nest\\]"'
+            regex: '(?P<nivel>LOG|ERROR|WARN|DEBUG|VERBOSE|FATAL)\x1b\[39m'
+            severity:
+              parse_from: attributes.nivel
+              mapping:
+                info: LOG
+                error: ERROR
+                warn: WARN
+                debug: DEBUG
+                trace: VERBOSE
+                fatal: FATAL
+
+          # Os backends tambem escrevem com o helper proprio (logInfo/logError),
+          # que sai sem ANSI e com o nivel entre colchetes no inicio da linha:
+          # "[WARN] modules/.../credsolaris.service.ts, classe: ...". E o formato
+          # que predomina em prd.
+          - type: regex_parser
+            id: helper-nivel
+            parse_from: body
+            on_error: send
+            if: 'body matches "^\\[(LOG|INFO|ERROR|WARN|DEBUG|VERBOSE|FATAL)\\]"'
+            regex: '^\[(?P<nivel>LOG|INFO|ERROR|WARN|DEBUG|VERBOSE|FATAL)\]'
+            severity:
+              parse_from: attributes.nivel
+              mapping:
+                info:
+                  - LOG
+                  - INFO
+                error: ERROR
+                warn: WARN
+                debug: DEBUG
+                trace: VERBOSE
+                fatal: FATAL
+
+    processors:
+      memory_limiter:
+        check_interval: 2s
+        limit_mib: 600
+        spike_limit_mib: 150
+      k8sattributes:
+        auth_type: serviceAccount
+        passthrough: false
+        filter:
+          # cada pod do DaemonSet so observa os pods do proprio node
+          node_from_env_var: K8S_NODE_NAME
+        extract:
+          metadata:
+            - k8s.namespace.name
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.node.name
+            - k8s.container.name
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.name
+              - from: resource_attribute
+                name: k8s.namespace.name
+      transform/identidade:
+        error_mode: ignore
+        log_statements:
+          - context: resource
+            statements:
+              # o SigNoz agrupa log por service.name; sem isso tudo cai em
+              # "unknown_service". k8s.container.name casa com o APP_NAME dos
+              # deployments, entao o log fica no mesmo servico do trace.
+              - set(attributes["service.name"], attributes["k8s.container.name"]) where attributes["service.name"] == nil
+              - set(attributes["deployment.environment"], attributes["k8s.namespace.name"]) where attributes["deployment.environment"] == nil
+      batch:
+        send_batch_size: 1024
+        timeout: 5s
+
+    exporters:
+      otlp:
+        endpoint: signoz-otel-collector.observability.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      extensions: [file_storage/checkpoint]
+      pipelines:
+        logs:
+          receivers: [filelog]
+          processors: [memory_limiter, k8sattributes, transform/identidade, batch]
+          exporters: [otlp]
+        metrics:
+          receivers: [kubeletstats]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [otlp]
+      telemetry:
+        logs:
+          level: warn
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-agent
+  namespace: observability
+  labels:
+    app: otel-agent
+spec:
+  selector:
+    matchLabels:
+      app: otel-agent
+  template:
+    metadata:
+      labels:
+        app: otel-agent
+      annotations:
+        # força o rollout quando o ConfigMap muda
+        checksum/config: 'v6'
+    spec:
+      serviceAccountName: otel-agent
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: otel-agent
+          image: otel/opentelemetry-collector-contrib:0.111.0
+          args: ['--config=/conf/config.yaml']
+          securityContext:
+            # /var/log/pods pertence ao root e o log e 0600
+            runAsUser: 0
+          env:
+            # O coletor media 215Mi de RSS contra um limit de 256Mi logo na
+            # primeira hora. O GOMEMLIMIT faz o GC do Go mirar um teto em vez
+            # de so devolver memoria quando sobra, que e o que evita OOMKill
+            # no agente -- cair justo o processo que observa os outros.
+            - name: GOMEMLIMIT
+              value: 600MiB
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: K8S_NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 768Mi
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: checkpoint
+              mountPath: /var/lib/otel-agent
+      volumes:
+        - name: config
+          configMap:
+            name: otel-agent
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+            type: Directory
+        - name: checkpoint
+          hostPath:
+            path: /var/lib/otel-agent
+            type: DirectoryOrCreate

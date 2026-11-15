@@ -1,0 +1,333 @@
+# =============================================================================
+# alerta-apis : CronJob que compara replica desejada x pronta e avisa no Telegram
+#
+# A cada 2 minutos varre deployment e statefulset dos namespaces de aplicacao.
+# Avisa so na MUDANCA de estado, para nao repetir a mesma mensagem.
+#
+# PLACEHOLDERS a trocar antes de aplicar:
+#   <CLUSTER>     -> nome do cluster, usado no texto da mensagem
+#   <NAMESPACES>  -> namespaces a vigiar
+#   Secret prd/telegram-alertas com TELEGRAM_TOKEN e TELEGRAM_CHAT_ID
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alerta-apis-estado
+  namespace: prd
+  labels:
+    app: alerta-apis
+data:
+  # Lista separada por espaco, no formato <namespace>/<workload>.
+  fora: ""
+  atualizado: ""
+  # Epoch (segundos UTC) do ultimo aviso enviado. 0 = nenhum pendente.
+  avisado_em: "0"
+---
+# Leitura e escrita APENAS no ConfigMap de estado. Nada mais.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alerta-apis-estado
+  namespace: prd
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["alerta-apis-estado"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alerta-apis-estado
+  namespace: prd
+subjects:
+  - kind: ServiceAccount
+    name: kubectl-runner
+    namespace: prd
+roleRef:
+  kind: Role
+  name: alerta-apis-estado
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alerta-apis
+  namespace: prd
+  labels:
+    app: alerta-apis
+data:
+  # Mesma funcao notifica() usada pelo arquivo 2. Se mudar aqui, mude la.
+  alerta.sh: |
+    #!/bin/sh
+    # Nao usar 'set -e': um namespace inacessivel nao deve impedir a checagem
+    # dos outros.
+    set -u
+
+    # ================== CONFIGURACAO (vem das env) ==================
+    NAMESPACES="${NAMESPACES:-dev hlg prd}"
+    # Identifica o cluster na mensagem: os dois clusters mandam para o MESMO
+    # grupo do Telegram, e "prd/postgres" sozinho seria ambiguo.
+    CLUSTER="${CLUSTER:-desconhecido}"
+    # Monitora TODO deployment e statefulset dos namespaces acima. Nao ha
+    # lista de inclusao: workload novo entra sozinho, sem ninguem lembrar de
+    # editar isto. EXCLUIR e a unica valvula, para o que NAO deve ser vigiado
+    # (nomes separados por espaco).
+    EXCLUIR="${EXCLUIR-}"
+
+    # De quanto em quanto tempo REPETIR o aviso enquanto algo continua fora.
+    # 0 desliga o lembrete (volta ao comportamento de avisar so na transicao).
+    #
+    # Faca a conta antes de baixar: a janela e de 16h, entao 15 min significa
+    # ate 64 mensagens por dia por workload que ficar fora o dia inteiro. Com
+    # 2 (todo ciclo) seriam 480.
+    LEMBRETE_MINUTOS="${LEMBRETE_MINUTOS:-15}"
+
+    NS_ESTADO="${NS_ESTADO:-prd}"
+    CM_ESTADO="${CM_ESTADO:-alerta-apis-estado}"
+
+    # Janela de silencio, em UTC (HHMM). 0100-0900 UTC = 22:00-06:00 BRT.
+    # Ou seja: so avisa das 06:00 as 22:00 de Brasilia.
+    #
+    # Em UTC de proposito, e nao em America/Sao_Paulo: assim nao depende de a
+    # imagem ter tzdata. O Brasil nao tem horario de verao desde 2019, entao
+    # UTC-3 e fixo. Se um dia voltar, ajuste os dois valores.
+    SILENCIO_INICIO="${SILENCIO_INICIO:-0100}"
+    SILENCIO_FIM="${SILENCIO_FIM:-0900}"
+
+    TG_API="${TG_API:-https://api.telegram.org}"
+    # ================================================================
+
+    notifica() {
+      # $1 = texto. Nunca derruba o Job: alerta que falha nao pode virar
+      # incidente proprio. O resultado vai para o log de qualquer forma.
+      echo "---- mensagem ----"
+      echo "$1"
+      echo "------------------"
+
+      if [ -z "${TELEGRAM_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+        echo "AVISO: Secret telegram-alertas ausente ou incompleto."
+        echo "       Nada enviado; so registrado acima."
+        return 0
+      fi
+      if ! command -v curl >/dev/null 2>&1; then
+        echo "AVISO: 'curl' ausente na imagem -- nada enviado."
+        return 0
+      fi
+      # Sem parse_mode de proposito: nome de workload com '_' quebraria
+      # Markdown e o Telegram responderia 400.
+      curl -sS -m 15 -o /dev/null -w 'telegram http=%{http_code}\n' \
+        -X POST "$TG_API/bot$TELEGRAM_TOKEN/sendMessage" \
+        --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+        --data-urlencode "disable_web_page_preview=true" \
+        --data-urlencode "text=$1" \
+        || echo "AVISO: falha ao chamar a API do Telegram"
+    }
+
+    contem() {
+      # $1 = lista separada por espaco, $2 = item
+      for _x in $1; do
+        [ "$_x" = "$2" ] && return 0
+      done
+      return 1
+    }
+
+    # ---------- janela de silencio ----------
+    agora="$(date -u +%H%M)"
+    silencio=0
+    if [ "$SILENCIO_INICIO" -le "$SILENCIO_FIM" ]; then
+      [ "$agora" -ge "$SILENCIO_INICIO" ] && [ "$agora" -lt "$SILENCIO_FIM" ] && silencio=1
+    else
+      # janela que cruza a meia-noite UTC
+      { [ "$agora" -ge "$SILENCIO_INICIO" ] || [ "$agora" -lt "$SILENCIO_FIM" ]; } && silencio=1
+    fi
+    if [ "$silencio" -eq 1 ]; then
+      echo "janela de silencio ($SILENCIO_INICIO-$SILENCIO_FIM UTC, agora $agora)"
+      echo "fora do horario de 06:00-22:00 BRT -- nao avisa e nao grava estado"
+      exit 0
+    fi
+
+    # ---------- levanta quem esta fora ----------
+    CHAVES=""   # "ns/nome ..."              -> comparado com o estado anterior
+    INFO=""     # "ns/nome=pronto/desejado ..." -> consultado ao montar a mensagem
+    for ns in $NAMESPACES; do
+      for obj in $(kubectl -n "$ns" get deploy,sts -o name 2>/dev/null); do
+        nome="${obj##*/}"
+
+        pular=0
+        for e in $EXCLUIR; do
+          [ "$nome" = "$e" ] && pular=1
+        done
+        [ "$pular" -eq 1 ] && continue
+
+        desejado="$(kubectl -n "$ns" get "$obj" -o jsonpath='{.spec.replicas}' 2>/dev/null)"
+        pronto="$(kubectl -n "$ns" get "$obj" -o jsonpath='{.status.readyReplicas}' 2>/dev/null)"
+        [ -z "$desejado" ] && desejado=0
+        [ -z "$pronto" ] && pronto=0
+
+        # Escalado a zero de proposito nao e queda.
+        [ "$desejado" -eq 0 ] && continue
+
+        if [ "$pronto" -lt "$desejado" ]; then
+          CHAVES="$CHAVES ${ns}/${nome}"
+          INFO="$INFO ${ns}/${nome}=${pronto}/${desejado}"
+        fi
+      done
+    done
+
+    # ---------- compara com o estado anterior ----------
+    ANTERIOR="$(kubectl -n "$NS_ESTADO" get cm "$CM_ESTADO" -o jsonpath='{.data.fora}' 2>/dev/null)"
+    # Epoch do ultimo aviso enviado. Vazio ou 0 = nenhum aviso pendente.
+    AVISADO="$(kubectl -n "$NS_ESTADO" get cm "$CM_ESTADO" -o jsonpath='{.data.avisado_em}' 2>/dev/null)"
+    [ -z "$AVISADO" ] && AVISADO=0
+    AGORA_S="$(date -u +%s)"
+    LEMBRETE_S=$((LEMBRETE_MINUTOS * 60))
+    echo "fora agora:   ${CHAVES:-<nenhuma>}"
+    echo "fora antes:   ${ANTERIOR:-<nenhuma>}"
+
+    NOVOS=""
+    for c in $CHAVES; do
+      contem "$ANTERIOR" "$c" || NOVOS="$NOVOS $c"
+    done
+    VOLTARAM=""
+    for c in $ANTERIOR; do
+      contem "$CHAVES" "$c" || VOLTARAM="$VOLTARAM $c"
+    done
+
+    # ---------- avisa so nas transicoes ----------
+    quando="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    detalhe_de() {
+      for _it in $INFO; do
+        case "$_it" in
+          "$1="*) echo "${_it#*=}"; return 0 ;;
+        esac
+      done
+      echo "?"
+    }
+
+    if [ -n "$NOVOS" ]; then
+      # Lista APENAS as que cairam agora. As que ja estavam fora entram numa
+      # linha separada, para a mensagem nao parecer um aviso repetido.
+      # printf em vez de string multi-linha: linha de continuacao com
+      # indentacao menor encerraria o bloco '|' do YAML.
+      lista=""
+      for c in $NOVOS; do
+        lista="$lista$(printf '\n  %s  %s prontas' "$c" "$(detalhe_de "$c")")"
+      done
+      restantes=""
+      for c in $CHAVES; do
+        contem "$NOVOS" "$c" || restantes="$restantes $c"
+      done
+      rodape=""
+      if [ -n "$restantes" ]; then
+        rodape="$(printf '\nja estavam fora:%s' "$restantes")"
+      fi
+      notifica "$(printf '[%s] FORA DO AR\n%s\n%s\ndetectado em %s (UTC)' "$CLUSTER" "$lista" "$rodape" "$quando")"
+      AVISADO="$AGORA_S"
+    fi
+
+    if [ -n "$VOLTARAM" ]; then
+      lista=""
+      for c in $VOLTARAM; do
+        lista="$lista$(printf '\n  %s' "$c")"
+      done
+      notifica "$(printf '[%s] VOLTARAM\n%s\n\nrecuperado em %s (UTC)' "$CLUSTER" "$lista" "$quando")"
+    fi
+
+    # ---------- lembrete: repete enquanto nao voltar ----------
+    # So entra quando NAO houve queda nova neste ciclo: a mensagem de queda ja
+    # teria acabado de listar tudo, e repetir em seguida seria ruido.
+    if [ -n "$CHAVES" ] && [ -z "$NOVOS" ] && [ "$LEMBRETE_S" -gt 0 ] \
+       && [ "$((AGORA_S - AVISADO))" -ge "$LEMBRETE_S" ]; then
+      lista=""
+      for c in $CHAVES; do
+        lista="$lista$(printf '\n  %s  %s prontas' "$c" "$(detalhe_de "$c")")"
+      done
+      minutos=$(( (AGORA_S - AVISADO) / 60 ))
+      notifica "$(printf '[%s] AINDA FORA DO AR\n%s\n\nsem voltar ha pelo menos %s min\n%s (UTC)' "$CLUSTER" "$lista" "$minutos" "$quando")"
+      AVISADO="$AGORA_S"
+    fi
+
+    # Nada fora: zera o relogio do lembrete.
+    [ -z "$CHAVES" ] && AVISADO=0
+
+    if [ -z "$NOVOS" ] && [ -z "$VOLTARAM" ] && [ "$AVISADO" != "$AGORA_S" ]; then
+      echo "sem transicao -- nada a avisar"
+    fi
+
+    # ---------- grava o estado ----------
+    # merge patch: so mexe nas chaves informadas. Falha aqui nao derruba o Job,
+    # no pior caso a proxima execucao reavisa.
+    kubectl -n "$NS_ESTADO" patch cm "$CM_ESTADO" --type merge \
+      -p "{\"data\":{\"fora\":\"${CHAVES# }\",\"atualizado\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"avisado_em\":\"$AVISADO\"}}" \
+      >/dev/null || echo "AVISO: nao consegui gravar o estado em $NS_ESTADO/$CM_ESTADO"
+
+    exit 0
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: alerta-apis
+  namespace: prd
+  labels:
+    app: alerta-apis
+spec:
+  # 06:00 as 21:58 de Brasilia. Fora disso o Job nem e criado: economiza ~240
+  # execucoes por noite. A janela de silencio dentro do script e redundante de
+  # proposito -- se alguem mexer no schedule, ela continua segurando o aviso.
+  schedule: "*/2 6-21 * * *"
+  timeZone: "America/Sao_Paulo"
+  # Forbid porque duas execucoes ao mesmo tempo leriam e gravariam o mesmo
+  # ConfigMap de estado e poderiam avisar duas vezes.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 60
+  # Historico curto: roda 720 vezes por dia.
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      # Bem menor que os 2 min de intervalo, para nunca empilhar.
+      activeDeadlineSeconds: 90
+      ttlSecondsAfterFinished: 600
+      template:
+        metadata:
+          labels:
+            app: alerta-apis
+        spec:
+          restartPolicy: Never
+          serviceAccountName: kubectl-runner
+          imagePullSecrets:
+            - name: dockerimages
+          containers:
+            - name: alerta
+              image: alpine/k8s:1.30.3
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh", "/script/alerta.sh"]
+              env:
+                - name: CLUSTER
+                  value: "credsolaris"
+                - name: TELEGRAM_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: telegram-alertas
+                      key: token
+                      optional: true
+                - name: TELEGRAM_CHAT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: telegram-alertas
+                      key: chat-id
+                      optional: true
+              volumeMounts:
+                - name: script
+                  mountPath: /script
+              resources:
+                limits: { cpu: 200m, memory: 128Mi }
+                requests: { cpu: 20m, memory: 48Mi }
+          volumes:
+            - name: script
+              configMap:
+                name: alerta-apis

@@ -1,0 +1,446 @@
+# =============================================================================
+# alerta-disco : CronJob que mede uso de PVC e avisa no Telegram
+#
+# A cada 30 minutos le o uso de todo PVC da storageClass escolhida.
+# Avisa em 70% (aviso) e 85% (critico), e repete enquanto seguir acima.
+#
+# PLACEHOLDERS a trocar antes de aplicar:
+#   <CLUSTER>       -> nome do cluster
+#   <STORAGECLASS>  -> padrao de storageClass a vigiar (ex: do-block-storage*)
+#   Secret prd/telegram-alertas
+# =============================================================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alerta-disco-estado
+  namespace: prd
+  labels:
+    app: alerta-disco
+data:
+  # Lista separada por espaco, no formato <namespace>/<pvc>=<nivel>, onde
+  # nivel e 0 (abaixo do aviso), 1 (aviso) ou 2 (critico).
+  niveis: ""
+  atualizado: ""
+  # Epoch (segundos UTC) do ultimo aviso enviado. 0 = nenhum pendente.
+  avisado_em: "0"
+---
+# SO LEITURA. PVC e node sao objetos de cluster, nao de namespace, por isso
+# ClusterRole com ClusterRoleBinding -- e nao Role, como no resto dos
+# arquivos. Nenhum verbo de escrita aqui: nada neste ClusterRole pode alterar,
+# criar ou apagar qualquer objeto.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: alerta-disco-leitor
+rules:
+  # Para saber QUAIS volumes existem e qual storageClass cada um usa.
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list"]
+  # Para descobrir os nomes dos nodes que serao consultados.
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  # Duas permissoes, porque a chamada passa por DUAS autorizacoes:
+  #
+  #   nodes/proxy  o apiserver checa isto para aceitar encaminhar a requisicao
+  #                /api/v1/nodes/<node>/proxy/... ao kubelet;
+  #   nodes/stats  o proprio kubelet, que roda com authorization-mode=Webhook,
+  #                checa isto de volta no apiserver antes de responder.
+  #
+  # Faltando qualquer uma das duas, a resposta e 403 e o script registra
+  # "nao consegui ler stats/summary do node X".
+  - apiGroups: [""]
+    resources: ["nodes/proxy", "nodes/stats"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: alerta-disco-leitor
+subjects:
+  - kind: ServiceAccount
+    name: kubectl-runner
+    namespace: prd
+roleRef:
+  kind: ClusterRole
+  name: alerta-disco-leitor
+  apiGroup: rbac.authorization.k8s.io
+---
+# A UNICA escrita que este alerta tem: o proprio ConfigMap de estado. Travado
+# por resourceNames, entao nem outros ConfigMaps de prd estao ao alcance.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alerta-disco-estado
+  namespace: prd
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["alerta-disco-estado"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alerta-disco-estado
+  namespace: prd
+subjects:
+  - kind: ServiceAccount
+    name: kubectl-runner
+    namespace: prd
+roleRef:
+  kind: Role
+  name: alerta-disco-estado
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alerta-disco
+  namespace: prd
+  labels:
+    app: alerta-disco
+data:
+  # Mesma funcao notifica() usada pelos arquivos 2 e 4. Se mudar aqui, mude la.
+  alerta-disco.sh: |
+    #!/bin/sh
+    # Nao usar 'set -e': um node inacessivel nao deve impedir a leitura dos
+    # outros.
+    set -u
+
+    # awk formata numero conforme o locale: com LC_NUMERIC pt_BR sairia "0,3G".
+    # Fixa em C para a mensagem nao mudar de formato conforme a imagem.
+    export LC_ALL=C
+
+    # ================== CONFIGURACAO (vem das env) ==================
+    # Identifica o cluster na mensagem: os dois clusters mandam para o MESMO
+    # grupo do Telegram, e "prd/minio-prd-block" sozinho seria ambiguo.
+    CLUSTER="${CLUSTER:-desconhecido}"
+
+    # Quais storageClass vigiar. Casado com 'case', entao '*' vale como curinga.
+    # do-block-storage* pega tanto a -retain (dados que nao podem ser perdidos)
+    # quanto a padrao, reclaim Delete, usada hoje pelo SigNoz.
+    SC_PADRAO="${SC_PADRAO:-do-block-storage*}"
+
+    # Limiares em porcentagem. 70 avisa, 85 e critico.
+    AVISO_PCT="${AVISO_PCT:-70}"
+    CRITICO_PCT="${CRITICO_PCT:-85}"
+
+    # PVCs a ignorar, no formato <namespace>/<nome>, separados por espaco.
+    EXCLUIR="${EXCLUIR-}"
+
+    # De quanto em quanto tempo REPETIR o aviso enquanto o volume continuar
+    # acima do limiar. 0 desliga o lembrete (avisa so quando o nivel muda).
+    #
+    # Disco nao se resolve em minutos: enche em dias. 6h significa no maximo 4
+    # mensagens por dia por volume cheio. Com 0.5 (todo ciclo) seriam 48.
+    LEMBRETE_HORAS="${LEMBRETE_HORAS:-6}"
+
+    NS_ESTADO="${NS_ESTADO:-prd}"
+    CM_ESTADO="${CM_ESTADO:-alerta-disco-estado}"
+
+    TG_API="${TG_API:-https://api.telegram.org}"
+    # ================================================================
+
+    notifica() {
+      # $1 = texto. Nunca derruba o Job: alerta que falha nao pode virar
+      # incidente proprio. O resultado vai para o log de qualquer forma.
+      echo "---- mensagem ----"
+      echo "$1"
+      echo "------------------"
+
+      if [ -z "${TELEGRAM_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; then
+        echo "AVISO: Secret telegram-alertas ausente ou incompleto."
+        echo "       Nada enviado; so registrado acima."
+        return 0
+      fi
+      if ! command -v curl >/dev/null 2>&1; then
+        echo "AVISO: 'curl' ausente na imagem -- nada enviado."
+        return 0
+      fi
+      # Sem parse_mode de proposito: nome de PVC com '_' quebraria Markdown e o
+      # Telegram responderia 400.
+      curl -sS -m 15 -o /dev/null -w 'telegram http=%{http_code}\n' \
+        -X POST "$TG_API/bot$TELEGRAM_TOKEN/sendMessage" \
+        --data-urlencode "chat_id=$TELEGRAM_CHAT_ID" \
+        --data-urlencode "disable_web_page_preview=true" \
+        --data-urlencode "text=$1" \
+        || echo "AVISO: falha ao chamar a API do Telegram"
+    }
+
+    # Procura "<chave>=<valor>" numa lista separada por espaco. Ecoa o valor, ou
+    # vazio se nao achar.
+    valor_de() {
+      for _it in $2; do
+        case "$_it" in
+          "$1="*) echo "${_it#*=}"; return 0 ;;
+        esac
+      done
+      echo ""
+    }
+
+    pct_de()   { awk -v u="$1" -v c="$2" 'BEGIN{ if (c+0 <= 0) { print 0; exit } printf "%d", (u*100)/c }'; }
+    humano_de() { awk -v b="$1" 'BEGIN{ printf "%.1fG", b/1073741824 }'; }
+
+    if ! command -v jq >/dev/null 2>&1; then
+      echo "ERRO: 'jq' ausente na imagem -- sem ele nao da para ler volumeStats."
+      exit 1
+    fi
+
+    # ---------- 1. quais PVCs vigiar ----------
+    # Lista cluster-wide: volume novo entra sozinho, sem ninguem lembrar de
+    # editar isto. EXCLUIR e a unica valvula.
+    ALVOS=""
+    for par in $(kubectl get pvc -A \
+          -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name}={.spec.storageClassName}{"\n"}{end}' 2>/dev/null); do
+      pvc="${par%%=*}"
+      sc="${par#*=}"
+      # shellcheck disable=SC2254
+      case "$sc" in
+        $SC_PADRAO) ;;
+        *) continue ;;
+      esac
+      pular=0
+      for e in $EXCLUIR; do
+        [ "$pvc" = "$e" ] && pular=1
+      done
+      [ "$pular" -eq 1 ] && continue
+      ALVOS="$ALVOS $pvc"
+    done
+
+    if [ -z "$ALVOS" ]; then
+      echo "nenhum PVC com storageClass $SC_PADRAO -- nada a medir"
+      exit 0
+    fi
+
+    # ---------- 2. uso de cada volume ----------
+    # Via /stats/summary do kubelet, que ja traz volumeStats: nao precisa de
+    # 'exec' em pod de producao, so de leitura. O kubelet so reporta volume de
+    # pod que esta rodando NAQUELE node, por isso varre todos.
+    USO=""
+    NODES="$(kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' 2>/dev/null)"
+    for node in $NODES; do
+      bruto="$(kubectl get --raw "/api/v1/nodes/$node/proxy/stats/summary" 2>/dev/null)"
+      if [ -z "$bruto" ]; then
+        echo "AVISO: nao consegui ler stats/summary do node $node"
+        continue
+      fi
+      linhas="$(printf '%s' "$bruto" | jq -r '
+          .pods[]? | select(.volume) | .volume[]?
+          | select(.pvcRef) | select(.capacityBytes)
+          | "\(.pvcRef.namespace)/\(.pvcRef.name)=\(.usedBytes):\(.capacityBytes)"' 2>/dev/null)"
+      USO="$USO $linhas"
+    done
+
+    # ---------- 3. classifica ----------
+    # nivel: 0 abaixo do aviso, 1 aviso, 2 critico.
+    NIVEIS=""    # "ns/pvc=nivel ..."   -> comparado com o estado anterior
+    DETALHE=""   # "ns/pvc=pct|usado|total ..." -> consultado ao montar a mensagem
+    for pvc in $ALVOS; do
+      med="$(valor_de "$pvc" "$USO")"
+      if [ -z "$med" ]; then
+        # PVC que nenhum pod em execucao monta: o kubelet nao reporta uso. Nao e
+        # alerta de disco, e so nao da para medir.
+        echo "sem medicao: $pvc (nenhum pod rodando monta este volume)"
+        continue
+      fi
+      usado="${med%%:*}"
+      total="${med#*:}"
+      pct="$(pct_de "$usado" "$total")"
+
+      nivel=0
+      [ "$pct" -ge "$AVISO_PCT" ] && nivel=1
+      [ "$pct" -ge "$CRITICO_PCT" ] && nivel=2
+
+      echo "$pvc  ${pct}%  $(humano_de "$usado")/$(humano_de "$total")  nivel=$nivel"
+      NIVEIS="$NIVEIS ${pvc}=${nivel}"
+      DETALHE="$DETALHE ${pvc}=${pct}|$(humano_de "$usado")|$(humano_de "$total")"
+    done
+
+    linha_de() {
+      d="$(valor_de "$1" "$DETALHE")"
+      [ -z "$d" ] && { printf '  %s  ?' "$1"; return 0; }
+      p="${d%%|*}"; resto="${d#*|}"
+      u="${resto%%|*}"; t="${resto#*|}"
+      printf '  %s  %s%%  %s de %s' "$1" "$p" "$u" "$t"
+    }
+
+    # ---------- 4. compara com o estado anterior ----------
+    ANTERIOR="$(kubectl -n "$NS_ESTADO" get cm "$CM_ESTADO" -o jsonpath='{.data.niveis}' 2>/dev/null)"
+    AVISADO="$(kubectl -n "$NS_ESTADO" get cm "$CM_ESTADO" -o jsonpath='{.data.avisado_em}' 2>/dev/null)"
+    [ -z "$AVISADO" ] && AVISADO=0
+    AGORA_S="$(date -u +%s)"
+    LEMBRETE_S="$(awk -v h="$LEMBRETE_HORAS" 'BEGIN{ printf "%d", h*3600 }')"
+    quando="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    echo "niveis agora: ${NIVEIS:-<nenhum>}"
+    echo "niveis antes: ${ANTERIOR:-<nenhum>}"
+
+    # Pioraram (inclui 0 -> 1 e 1 -> 2) e normalizaram (voltaram a 0).
+    PIORARAM=""
+    ACIMA=""
+    for it in $NIVEIS; do
+      pvc="${it%%=*}"; nivel="${it#*=}"
+      antes="$(valor_de "$pvc" "$ANTERIOR")"
+      [ -z "$antes" ] && antes=0
+      [ "$nivel" -gt 0 ] && ACIMA="$ACIMA $pvc"
+      [ "$nivel" -gt "$antes" ] && PIORARAM="$PIORARAM ${pvc}=${nivel}"
+    done
+    NORMALIZARAM=""
+    for it in $ANTERIOR; do
+      pvc="${it%%=*}"; antes="${it#*=}"
+      [ "$antes" -eq 0 ] && continue
+      agora_n="$(valor_de "$pvc" "$NIVEIS")"
+      # PVC que desapareceu tambem sai do radar: nao ha o que alertar.
+      [ -z "$agora_n" ] && agora_n=0
+      [ "$agora_n" -eq 0 ] && NORMALIZARAM="$NORMALIZARAM $pvc"
+    done
+
+    # ---------- 5. avisa so quando o nivel muda ----------
+    # Sem mudanca de nivel, nao manda nada. Silencio e o estado normal: ruido faz
+    # ignorarem. O estado anterior vive no ConfigMap alerta-disco-estado.
+    if [ -n "$PIORARAM" ]; then
+      criticos=""
+      avisos=""
+      for it in $PIORARAM; do
+        pvc="${it%%=*}"; nivel="${it#*=}"
+        if [ "$nivel" -eq 2 ]; then
+          criticos="$criticos$(printf '\n%s' "$(linha_de "$pvc")")"
+        else
+          avisos="$avisos$(printf '\n%s' "$(linha_de "$pvc")")"
+        fi
+      done
+      # Titulo pelo pior nivel deste ciclo, para a primeira linha ja dizer a
+      # gravidade.
+      titulo="DISCO EM AVISO (>= ${AVISO_PCT}%)"
+      [ -n "$criticos" ] && titulo="DISCO CRITICO (>= ${CRITICO_PCT}%)"
+      corpo=""
+      [ -n "$criticos" ] && corpo="$corpo$(printf '\ncritico:%s' "$criticos")"
+      [ -n "$avisos" ] && corpo="$corpo$(printf '\naviso:%s' "$avisos")"
+      # Os que ja estavam acima entram separados, para a mensagem nao parecer
+      # repetida.
+      restantes=""
+      for pvc in $ACIMA; do
+        case " $PIORARAM " in
+          *" ${pvc}="*) ;;
+          *) restantes="$restantes$(printf '\n%s' "$(linha_de "$pvc")")" ;;
+        esac
+      done
+      [ -n "$restantes" ] && corpo="$corpo$(printf '\nja estavam acima:%s' "$restantes")"
+      notifica "$(printf '[%s] %s%s\n\nexpandir: kubectl -n <ns> patch pvc <nome> -p %s --type merge\nmedido em %s (UTC)' \
+        "$CLUSTER" "$titulo" "$corpo" "'{\"spec\":{\"resources\":{\"requests\":{\"storage\":\"<novo>Gi\"}}}}'" "$quando")"
+      AVISADO="$AGORA_S"
+    fi
+
+    if [ -n "$NORMALIZARAM" ]; then
+      lista=""
+      for pvc in $NORMALIZARAM; do
+        lista="$lista$(printf '\n%s' "$(linha_de "$pvc")")"
+      done
+      notifica "$(printf '[%s] DISCO NORMALIZOU (< %s%%)%s\n\nmedido em %s (UTC)' \
+        "$CLUSTER" "$AVISO_PCT" "$lista" "$quando")"
+    fi
+
+    # ---------- 6. lembrete: repete enquanto nao normalizar ----------
+    # So entra quando NADA piorou neste ciclo: a mensagem de piora ja teria
+    # acabado de listar tudo, e repetir em seguida seria ruido.
+    if [ -n "$ACIMA" ] && [ -z "$PIORARAM" ] && [ "$LEMBRETE_S" -gt 0 ] \
+       && [ "$((AGORA_S - AVISADO))" -ge "$LEMBRETE_S" ]; then
+      lista=""
+      for pvc in $ACIMA; do
+        lista="$lista$(printf '\n%s' "$(linha_de "$pvc")")"
+      done
+      horas=$(( (AGORA_S - AVISADO) / 3600 ))
+      notifica "$(printf '[%s] DISCO AINDA ACIMA DO LIMIAR%s\n\nsem normalizar ha pelo menos %sh\n%s (UTC)' \
+        "$CLUSTER" "$lista" "$horas" "$quando")"
+      AVISADO="$AGORA_S"
+    fi
+
+    # Nada acima do limiar: zera o relogio do lembrete.
+    [ -z "$ACIMA" ] && AVISADO=0
+
+    if [ -z "$PIORARAM" ] && [ -z "$NORMALIZARAM" ] && [ "$AVISADO" != "$AGORA_S" ]; then
+      echo "sem mudanca de nivel -- nada a avisar"
+    fi
+
+    # ---------- 7. grava o estado ----------
+    # merge patch: so mexe nas chaves informadas. Falha aqui nao derruba o Job,
+    # no pior caso a proxima execucao reavisa.
+    kubectl -n "$NS_ESTADO" patch cm "$CM_ESTADO" --type merge \
+      -p "{\"data\":{\"niveis\":\"${NIVEIS# }\",\"atualizado\":\"$quando\",\"avisado_em\":\"$AVISADO\"}}" \
+      >/dev/null || echo "AVISO: nao consegui gravar o estado em $NS_ESTADO/$CM_ESTADO"
+
+    exit 0
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: alerta-disco
+  namespace: prd
+  labels:
+    app: alerta-disco
+spec:
+  # 24 horas por dia. Disco enche em dias, nao em minutos, e so avisa quando o
+  # nivel muda -- entao rodar de madrugada nao gera ruido. 48 execucoes/dia.
+  schedule: "*/30 * * * *"
+  timeZone: "America/Sao_Paulo"
+  # Forbid porque duas execucoes ao mesmo tempo leriam e gravariam o mesmo
+  # ConfigMap de estado e poderiam avisar duas vezes.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      # Bem menor que os 30 min de intervalo, para nunca empilhar. Uma volta
+      # completa leva ~5s: duas chamadas por node mais uma lista de PVC.
+      activeDeadlineSeconds: 120
+      ttlSecondsAfterFinished: 1800
+      template:
+        metadata:
+          labels:
+            app: alerta-disco
+        spec:
+          restartPolicy: Never
+          serviceAccountName: kubectl-runner
+          imagePullSecrets:
+            - name: dockerimages
+          containers:
+            - name: alerta
+              # Mesma imagem do alerta-apis: ja traz kubectl, curl e jq.
+              image: alpine/k8s:1.30.3
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh", "/script/alerta-disco.sh"]
+              env:
+                - name: CLUSTER
+                  value: "credsolaris"
+                # Limiares. Mudar aqui NAO exige mexer no script.
+                - name: AVISO_PCT
+                  value: "70"
+                - name: CRITICO_PCT
+                  value: "85"
+                - name: TELEGRAM_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: telegram-alertas
+                      key: token
+                      optional: true
+                - name: TELEGRAM_CHAT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: telegram-alertas
+                      key: chat-id
+                      optional: true
+              volumeMounts:
+                - name: script
+                  mountPath: /script
+              resources:
+                limits: { cpu: 300m, memory: 192Mi }
+                requests: { cpu: 20m, memory: 64Mi }
+          volumes:
+            - name: script
+              configMap:
+                name: alerta-disco

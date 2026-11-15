@@ -1,0 +1,151 @@
+# =============================================================================
+# alerta-relay-telegram : traduz o webhook do SigNoz para a API do Telegram
+#
+# O SigNoz manda payload no formato do Alertmanager; o Telegram espera
+# chat_id e text. Este servico fica no meio. Sem ele, alerta criado na tela
+# do SigNoz nao chega em lugar nenhum.
+#
+# PLACEHOLDERS a trocar antes de aplicar:
+#   <CLUSTER>  -> nome do cluster, no env CLUSTER do Deployment
+#   Secret prd/telegram-alertas
+# =============================================================================
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alerta-relay-telegram
+  namespace: prd
+data:
+  relay.py: |
+    import json, os, urllib.parse, urllib.request
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    TOKEN = os.environ["TELEGRAM_TOKEN"]
+    CHAT = os.environ["TELEGRAM_CHAT_ID"]
+    CLUSTER = os.environ.get("CLUSTER", "")
+    API = "https://api.telegram.org/bot%s/sendMessage" % TOKEN
+
+    def enviar(texto):
+        dados = urllib.parse.urlencode({
+            "chat_id": CHAT,
+            "text": texto,
+            "disable_web_page_preview": "true",
+        }).encode()
+        req = urllib.request.Request(API, data=dados)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            return r.status
+
+    def formatar(corpo):
+        # o SigNoz manda o payload do Alertmanager: status geral + lista de alertas
+        alertas = corpo.get("alerts") or []
+        linhas = []
+        for a in alertas:
+            rotulos = a.get("labels") or {}
+            anota = a.get("annotations") or {}
+            estado = (a.get("status") or corpo.get("status") or "").upper()
+            marca = "[RESOLVIDO]" if estado == "RESOLVED" else "[ALERTA]"
+            nome = rotulos.get("alertname", "sem nome")
+            linhas.append("%s %s%s" % (marca, nome, (" - " + CLUSTER) if CLUSTER else ""))
+            resumo = anota.get("summary") or anota.get("description")
+            if resumo:
+                linhas.append(resumo)
+            # o que diferencia uma serie da outra: pod, node, deployment...
+            contexto = {k: v for k, v in rotulos.items()
+                        if k not in ("alertname", "severity", "ruleId", "ruleSource")}
+            if contexto:
+                linhas.append(", ".join("%s=%s" % (k, v) for k, v in sorted(contexto.items())))
+            url = a.get("generatorURL")
+            if url:
+                linhas.append(url)
+            linhas.append("")
+        return "\n".join(linhas).strip() or "Alerta do SigNoz sem conteudo."
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            tamanho = int(self.headers.get("Content-Length") or 0)
+            bruto = self.rfile.read(tamanho) if tamanho else b"{}"
+            # responde antes de falar com o Telegram: o SigNoz nao precisa esperar
+            self.send_response(200); self.end_headers(); self.wfile.write(b"ok")
+            try:
+                enviar(formatar(json.loads(bruto.decode("utf-8", "ignore"))))
+            except Exception as e:
+                # nunca imprime o token: so o tipo do erro
+                print("falha ao repassar para o telegram: %s" % type(e).__name__, flush=True)
+
+        def do_GET(self):
+            self.send_response(200); self.end_headers(); self.wfile.write(b"ok")
+
+        def log_message(self, *a):
+            pass
+
+    HTTPServer(("", 8080), Handler).serve_forever()
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alerta-relay-telegram
+  namespace: prd
+  labels:
+    app: alerta-relay-telegram
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alerta-relay-telegram
+  template:
+    metadata:
+      labels:
+        app: alerta-relay-telegram
+    spec:
+      containers:
+        - name: relay
+          image: python:3.12-alpine
+          command: ['python', '/app/relay.py']
+          env:
+            - name: CLUSTER
+              value: <CLUSTER>
+            - name: TELEGRAM_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: telegram-alertas
+                  key: token
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: telegram-alertas
+                  key: chat-id
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 10m
+              memory: 48Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: alerta-relay-telegram
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alerta-relay-telegram
+  namespace: prd
+spec:
+  selector:
+    app: alerta-relay-telegram
+  ports:
+    - port: 80
+      targetPort: 8080

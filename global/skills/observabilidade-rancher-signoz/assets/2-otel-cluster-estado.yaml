@@ -1,0 +1,145 @@
+# =============================================================================
+# otel-cluster : Deployment que le o estado do cluster pela API do k8s
+#
+# Emite pod reiniciando, deployment com menos replica do que deveria, node
+# fora de Ready e quanto ja foi reservado de CPU e memoria por node.
+# Replica unica de proposito: dois pods dobrariam a serie.
+#
+# PLACEHOLDERS a trocar antes de aplicar:
+#   (nenhum; o arquivo e generico)
+# =============================================================================
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-cluster
+  namespace: observability
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-cluster
+rules:
+  - apiGroups: ['']
+    resources:
+      - events
+      - namespaces
+      - nodes
+      - pods
+      - replicationcontrollers
+      - resourcequotas
+      - services
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['apps']
+    resources: ['daemonsets', 'deployments', 'replicasets', 'statefulsets']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['batch']
+    resources: ['jobs', 'cronjobs']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['autoscaling']
+    resources: ['horizontalpodautoscalers']
+    verbs: ['get', 'list', 'watch']
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-cluster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-cluster
+subjects:
+  - kind: ServiceAccount
+    name: otel-cluster
+    namespace: observability
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-cluster
+  namespace: observability
+data:
+  config.yaml: |
+    receivers:
+      k8s_cluster:
+        auth_type: serviceAccount
+        collection_interval: 30s
+        # Ready responde "o node caiu?"; as tres pressoes avisam ANTES de o
+        # kubelet comecar a despejar pod, que e quando ainda da para agir.
+        node_conditions_to_report: [Ready, MemoryPressure, DiskPressure, PIDPressure]
+        # allocatable e o teto real do node, ja descontado o que o sistema
+        # reserva. E contra ele que a soma dos requests tem que ser comparada.
+        allocatable_types_to_report: [cpu, memory, pods]
+
+    processors:
+      memory_limiter:
+        check_interval: 2s
+        limit_mib: 300
+        spike_limit_mib: 80
+      batch:
+        send_batch_size: 1024
+        timeout: 5s
+
+    exporters:
+      otlp:
+        endpoint: signoz-otel-collector.observability.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [k8s_cluster]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]
+      telemetry:
+        logs:
+          level: warn
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-cluster
+  namespace: observability
+  labels:
+    app: otel-cluster
+spec:
+  # nunca mais que 1: ver o comentario do topo
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: otel-cluster
+  template:
+    metadata:
+      labels:
+        app: otel-cluster
+    spec:
+      serviceAccountName: otel-cluster
+      containers:
+        - name: otel-cluster
+          image: otel/opentelemetry-collector-contrib:0.111.0
+          args: ['--config=/conf/config.yaml']
+          env:
+            - name: GOMEMLIMIT
+              value: 300MiB
+          resources:
+            requests:
+              cpu: 30m
+              memory: 96Mi
+            limits:
+              cpu: 200m
+              memory: 384Mi
+          volumeMounts:
+            - name: conf
+              mountPath: /conf
+      volumes:
+        - name: conf
+          configMap:
+            name: otel-cluster
