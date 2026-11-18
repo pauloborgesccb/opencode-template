@@ -80,6 +80,8 @@ Todas falham em silêncio: nada quebra, só não aparece. Vale ler antes.
 
 **Page cache parece consumo.** `memory.current` de um banco inclui cache de arquivo, reclamável. Para dimensionar, leia `anon` em `memory.stat`. Um Postgres com 2,16GiB de `memory.current` tinha 8,5MB de memória anônima.
 
+**Ambiente que não precisa de telemetria.** Nem todo projeto quer dev e hlg no SigNoz: em um caso real, dev e hlg respondiam por 2,7 milhões de spans e 370 mil linhas de log contra zero de produção, que sequer estava instrumentada, e as regras de alerta filtravam `prd` e por isso nunca disparavam. Se a decisão for cobrir só produção, corte nas duas pontas: no agente, restrinja o `include` do `filelog` aos caminhos de produção e ponha um processor `filter` descartando datapoint de métrica dos outros namespaces, lembrando que métrica de node não tem namespace e deve continuar passando; na aplicação, passe `OTEL_SDK_DISABLED` por ambiente pelo manifesto e trate a variável explicitamente no bootstrap do tracer, porque nem todo wrapper de SDK a respeita sozinho. Cortar só na aplicação deixa o log entrando; cortar só no agente deixa o trace entrando.
+
 **Disco e retenção.** Log é o sinal que mais cresce. Antes de abrir para produção, confira espaço livre e retenção (no SigNoz, a coluna `_retention_days`, padrão 15 dias) e deixe o alerta de disco cobrindo o volume do banco de telemetria.
 
 ## Quando o pedido for "não está chegando nada"
