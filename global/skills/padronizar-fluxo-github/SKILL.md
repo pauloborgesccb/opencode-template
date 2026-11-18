@@ -54,6 +54,7 @@ Nunca comece distribuindo. Levante e **relate o que estiver fora do esperado**:
 
 | O que | Como | Por que importa |
 |---|---|---|
+| **Se o fluxo ja esta instalado** | `gh api repos/<org>/<repo>/contents/.github/workflows` e `gh api repos/<org>/<repo>/rulesets` | **confira antes de aceitar o pedido como esta escrito.** Quem pede "instale o fluxo" pode estar com informacao de semanas atras: numa organizacao o fluxo ja estava inteiro, com os dois rulesets, tag saindo e card andando, e o pedido dizia "comeca do zero, sem deploy nenhum". Levantar primeiro trocou a tarefa de instalar para corrigir dois furos. Relate a diferenca antes de mexer |
 | Papel na organizacao | `gh api orgs/<org>/memberships/<usuario>` | sem admin nos repos nao da para criar ruleset |
 | Branches de cada repo | `gh api repos/<org>/<repo>/branches` | falta de `staging` ou de `develop` muda o desenho |
 | Divergencia entre as branches | `gh api repos/<org>/<repo>/compare/main...develop` | **main parada e o caso mais comum**: branch de trabalho nasceria vazia |
@@ -120,13 +121,50 @@ depois do primeiro merge. Proteger antes trava todos os pull requests.
 
 Sao **dois rulesets**, porque o risco nao e o mesmo:
 
-| Ruleset | Branches | Aprovacao | Code owner |
-|---|---|---|---|
-| Protecao da develop | `develop` | nenhuma, a pessoa mergeia o proprio | nao |
-| Protecao das branches de entrega | `staging`, `main` | 1 | sim |
+| Ruleset | Branches | Aprovacao | Code owner | Thread resolvida |
+|---|---|---|---|---|
+| Protecao da develop | `develop` | nenhuma, a pessoa mergeia o proprio | nao | sim |
+| Protecao das branches de entrega | `staging`, `main` | 1 | sim | sim |
 
 Exigir revisor em `develop` trava o time sem ganho: dali sai so o ambiente de dev. Em
 `staging` e `main` a aprovacao fica, porque dali saem homologacao e producao.
+
+### Quem pode aprovar entrega
+
+O ruleset diz **quantas** aprovacoes, o `CODEOWNERS` diz **de quem**. E e o `CODEOWNERS`
+que erra calado.
+
+`CODEOWNERS` nao sabe de branch: ele vale para o repositorio inteiro. O que separa os
+ambientes e o ruleset, que exige `require_code_owner_review` so em `staging` e `main`.
+Entao restringir dono nao atrapalha a `develop`, onde ninguem precisa aprovar.
+
+**Nao aponte o `*` para um time.** Com dono de time, o GitHub aceita a aprovacao de
+qualquer membro, e um developer passa a liberar homologacao e producao igual a quem
+responde por elas. Nomeie as pessoas:
+
+```bash
+APROVADORES="@pessoa1 @pessoa2 @pessoa3" scripts/distribuir.sh ...
+```
+
+Tres nomes, nao dois e nunca um, e por um motivo que nao e estetico: **o GitHub nunca
+aceita que o autor aprove o proprio pull request**, nem quando ele e dono do codigo. Com
+dois donos, o pull request de um depende sempre da mesma pessoa; com um, ninguem aprova e
+o repositorio trava. Antes de prometer a lista, confirme que cada nome tem escrita no
+repositorio: quem nao tem e ignorado pelo GitHub, sem aviso.
+
+Confira com `DRY_RUN=1`, que imprime o dono que iria para o arquivo, e leia de volta
+depois de aplicar:
+
+```bash
+gh api repos/<org>/<repo>/contents/.github/CODEOWNERS --jq '.content' | base64 -d
+```
+
+`required_review_thread_resolution` fica **ligado nos dois**, inclusive na `develop`. Nao
+confunda com dar veto a IA: o veredito dela continua sem bloquear nada, o que nao pode e
+ignorar o apontamento em silencio. Isso so e sustentavel porque o review apaga as proprias
+threads sem resposta a cada push: thread que voce resolveu ou respondeu sobrevive e nao
+volta, e a que virou obsoleta some sozinha. Sem essa limpeza, cada push acumularia threads
+velhas para resolver na mao antes de mergear.
 
 ```bash
 ORG=<org> REPOS_PADRAO='<repo> <repo>' ci-workflows/scripts/proteger-branches.sh
@@ -134,7 +172,7 @@ ORG=<org> REPOS_PADRAO='<repo> <repo>' ci-workflows/scripts/proteger-branches.sh
 
 ## Armadilhas que ja custaram caro
 
-Sao dezessete, e cada uma custou pelo menos um ciclo de push e espera.
+Sao vinte e sete, e cada uma custou pelo menos um ciclo de push e espera.
 
 1. **`default_workflow_permissions: read` na organizacao.** Workflow reutilizavel que pede
    `pull-requests: write` derruba o run em `startup_failure`, **sem log nenhum**. O job que
@@ -183,6 +221,100 @@ Sao dezessete, e cada uma custou pelo menos um ciclo de push e espera.
 16. **Teste que indexa passo por posicao quebra ao inserir passo.** Busque pelo nome.
 17. **Filtro de caminho nao vale para push de tag**, entao `paths-ignore` num workflow que
    tambem dispara em tag nao quebra o deploy de producao. Esta na documentacao do GitHub.
+
+18. **O ruleset so cobre a branch que voce listou, e repo sem a CI detectada fica com
+    check a menos.** O `proteger-branches.sh` monta a lista de checks lendo o `pr.yml` do
+    clone local: se o working tree estiver em outra branch na hora, ele nao ve o portao de
+    qualidade e cria o ruleset sem exigi-lo. O workflow roda, mas nao bloqueia, e da para
+    mergear com build vermelho sem perceber. Confira depois com
+    `gh api repos/<org>/<repo>/rulesets/<id> --jq '[.rules[]|select(.type=="required_status_checks")|.parameters.required_status_checks[].context]'`
+    e compare a contagem entre os repositorios: um com menos check que os outros e o sinal.
+
+19. **`CODEOWNERS` apontando para time deixa qualquer membro liberar producao.** Nao e o
+    ruleset que esta errado, e o dono. Com `require_code_owner_review` e `* @org/time`, a
+    aprovacao de qualquer um dos membros conta, developer incluido. O sintoma e nenhum: o
+    merge acontece e parece correto. Veja "Quem pode aprovar entrega".
+
+20. **O autor nunca aprova o proprio pull request.** Quem abriu fica com `REVIEW_REQUIRED`
+    para sempre e, sendo a unica pessoa dona, so sai por bypass de admin. Isso confunde
+    porque a mensagem do GitHub fala de "code owner review", e quem le entende que falta um
+    dono, quando o que falta e **outro** dono. Confira o autor antes de procurar erro de
+    regra: `gh pr view <n> --json author`.
+
+21. **Correcao pedida no review de uma promocao tem que ir na branch de trabalho.** Ela e a
+    fonte das tres promocoes. Commitando direto na promocao, a branch de trabalho fica
+    atrasada em silencio e a promocao seguinte sobe incompleta, com todos os checks verdes,
+    porque o portao de qualidade avalia o que esta ali, nao o que deveria estar. Aconteceu
+    duas vezes num mesmo PR: a de hlg nasceria com 1 de 15 commits. Antes de abrir cada
+    promocao, compare: `git diff <promocao-anterior> -- <arquivos tocados> --stat` tem que
+    vir vazio.
+
+22. **O review por IA reescreve as proprias threads a cada push.** Responder uma rodada
+    depois de empurrar a correcao devolve `Parent comment not found`, porque o comentario
+    deixou de existir. Em PR que vai e volta, publique o fechamento como comentario de
+    issue (`gh api repos/<org>/<repo>/issues/<n>/comments`), que nao e apagado, e deixe as
+    threads so para o que ainda esta vivo. A descricao do PR tambem entra no prompt do
+    review: justificativa acumulada a cada rodada infla o custo e chega a estourar credito.
+
+23. **`dismiss_stale_reviews_on_push: true` mata a aprovacao no push seguinte.** Combinado
+    com o autor nao poder se aprovar, isso cria uma ordem obrigatoria: aprovar e mergear,
+    sem nenhum commit no meio. Um push de ajuste de comentario derruba a aprovacao e manda
+    pedir de novo.
+
+24. **Falha de billing se disfarca de falha de codigo.** Dois casos no mesmo dia. Actions
+    recusando iniciar job: todos os checks vermelhos em 2s, **zero steps**, log inexistente
+    (`BlobNotFound`) e a unica pista na annotation do check run, dizendo que o pagamento
+    falhou ou o teto de gasto foi atingido. E a IA do review sem saldo: 402 do OpenRouter,
+    `weight_exceeds_budget`, que deixa so aquele check vermelho. O que distingue os dois e
+    simples: se o check de validacao de **nome de branch** tambem caiu, nao e a IA, porque
+    ele nao chama modelo nenhum. Leia a annotation antes de procurar erro no diff:
+    `gh api repos/<org>/<repo>/check-runs/<id>/annotations --jq '.[].message'`
+
+25. **`http.extraheader` do `actions/checkout` vence a credencial da URL do `origin`.**
+    O workflow que cria a tag reescreve o `origin` com o token do App e empurra. Nao
+    funciona: o `actions/checkout` gravou `http.https://github.com/.extraheader` com o
+    `GITHUB_TOKEN`, e esse header tem prioridade sobre a credencial da URL. O push sai como
+    `github-actions[bot]`, e push com o token padrao **nao aciona outro workflow**, entao a
+    tag nasce e o deploy de producao nao dispara. O sintoma engana porque a tag aparece
+    certa: so o deploy falta. Remova o header antes do push:
+
+    ```bash
+    git config --unset-all "http.https://github.com/.extraheader"
+    ```
+
+    Confira de quem saiu a tag com
+    `gh api repos/<org>/<repo>/git/refs/tags/<tag> --jq .object.sha` e o autor do push nos
+    eventos do repositorio. Aconteceu na TGB-Digital porque o `@v1` dela estava numa versao
+    anterior a correcao que a outra organizacao ja tinha: **`@v1` de organizacoes diferentes
+    nao andam juntos**, e mover a tag numa nao move na outra.
+
+26. **Rodar o `distribuir.sh` de novo afrouxa o portao que voce ja endureceu.** Ele nao
+    costura so o `CODEOWNERS`: regrava o `pr.yml` inteiro a partir dos modelos, com os
+    valores das variaveis **daquela execucao**. Como `PORTOES_BLOQUEIAM` tem padrao
+    `false`, redistribuir num repositorio onde lint e tipos ja bloqueavam devolve os dois
+    para informativo, em silencio, e o build vermelho volta a passar. O mesmo vale para
+    `CHAVES_JIRA`, `STATUS_*` e `cobertura_minima`: o que voce nao passar volta ao padrao.
+
+    Em repositorio ja instalado, redistribuir e a excecao, nao a regra. Para mudar so uma
+    peca, gere so aquela peca com a mesma logica do script, e confira o diff antes de
+    commitar: `git diff --stat` tem que mostrar apenas o arquivo que voce quis mudar. Se
+    for redistribuir mesmo, leia primeiro o `pr.yml` que esta no repositorio e passe todas
+    as variaveis que reproduzem o estado atual.
+
+27. **Branch espelhada transforma a protecao de entrega em enfeite.** Onde o produto ainda
+    nao tem hlg e prd, o `espelhar-ambientes.yml` leva a `develop` para `staging` e `main`
+    por fast-forward depois do deploy verde em dev. Enquanto ele existir no repositorio,
+    tudo que entra na `develop`, que nao exige aprovacao nenhuma, chega sozinho nas duas
+    branches de entrega: o `CODEOWNERS` e a exigencia de 1 aprovacao passam a valer so
+    para quem abrir pull request direto para elas. Nao e descuido, e o preco de ter as
+    tres branches antes dos ambientes, e o proprio arquivo diz isso no cabecalho.
+
+    Junto com ele vem a guarda `vars.PUBLICAR_HLG` e `vars.PUBLICAR_PRD` nos jobs de
+    deploy: sem a **variavel** de Actions criada (nao o secret), todo run de `staging` e de
+    tag aparece como `skipped`. Ao levantar, confira
+    `gh api repos/<org>/<repo>/actions/variables`: variavel vazia com job `skipped` nao e
+    defeito, e ambiente que ainda nao existe. E diga ao time, porque "protegido" ali quer
+    dizer outra coisa: a protecao de entrega so morde quando o espelho sair.
 
 ## O que depende de gente, e nao de script
 
