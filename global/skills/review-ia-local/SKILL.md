@@ -9,10 +9,16 @@ A CI de pull request dos repositorios roda `credsolaris/ci-workflows/.github/act
 que manda o diff para um modelo no OpenRouter e publica um card de resumo mais um comentario
 inline por achado. Esta skill reproduz isso no terminal, antes do pull request existir.
 
-O script fica em `scripts/review-local.mjs`, dentro do diretorio desta skill, instalado em
-`~/.claude/skills/review-ia-local/`. Os exemplos abaixo usam esse caminho; se a skill estiver em
-outro lugar, resolva a partir da pasta dela. O diretorio de trabalho e sempre o repositorio que
-esta sendo revisado.
+O script fica em `scripts/review-local.mjs`, dentro do diretorio desta skill. Nos exemplos,
+`$SKILL` e a pasta desta skill, que depende do agente:
+
+```bash
+SKILL=~/.claude/skills/review-ia-local      # Claude Code
+SKILL=~/.config/opencode/skills/review-ia-local   # opencode
+```
+
+Troque pelo caminho real antes de rodar. O diretorio de trabalho e sempre o repositorio que
+esta sendo revisado, nunca a pasta da skill.
 
 **As regras nao sao copiadas para ca.** O script le o prompt de sistema e a lista de arquivos
 ignorados direto do `review-ia.mjs` da CI, para o que o terminal diz nao divergir do que o
@@ -44,7 +50,7 @@ Node 20 ou superior. Se o projeto fixa versao, use a skill de version managers a
 1. Gere o prompt a partir do diff:
 
    ```bash
-   node ~/.claude/skills/review-ia-local/scripts/review-local.mjs prompt
+   node $SKILL/scripts/review-local.mjs prompt
    ```
 
    Sem opcao, a faixa e `origin/main...HEAD`, igual a baseline da CI. Use `--base origin/develop`
@@ -81,7 +87,7 @@ Node 20 ou superior. Se o projeto fixa versao, use a skill de version managers a
 4. Renderize no formato do GitHub e mostre a saida ao usuario como ela sai:
 
    ```bash
-   node ~/.claude/skills/review-ia-local/scripts/review-local.mjs render .git/review-ia/achados.json
+   node $SKILL/scripts/review-local.mjs render .git/review-ia/achados.json
    ```
 
    O script ancora cada achado numa linha que o GitHub aceitaria como comentario; o que nao tem
@@ -94,7 +100,7 @@ mesmo. Depois dela, voce pode comentar em texto corrido o que faria primeiro.
 ## Modo ia
 
 ```bash
-OPENROUTER_API_KEY=... node ~/.claude/skills/review-ia-local/scripts/review-local.mjs ia
+OPENROUTER_API_KEY=... node $SKILL/scripts/review-local.mjs ia
 ```
 
 Mesmo modelo, mesma temperatura, mesmo `max_tokens` e mesmo tratamento de resposta cortada da
